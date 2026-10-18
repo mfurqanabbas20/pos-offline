@@ -6,7 +6,7 @@ import { InvoiceDetailView } from "./invoice-detail"
 
 export default function InvoiceDetailPage() {
   return (
-    <Suspense fallback={<LoadingState rows={6} className="mx-auto max-w-5xl" />}>
+    <Suspense fallback={<LoadingState rows={6} className="mx-auto max-w-7xl" />}>
       <InvoiceDetailView />
     </Suspense>
   )

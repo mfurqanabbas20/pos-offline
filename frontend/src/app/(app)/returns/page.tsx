@@ -25,7 +25,7 @@ export default function ReturnsPage() {
   const returns = useReturns({ search: debounced, date_from: dateFrom, date_to: dateTo, page, page_size: PAGE_SIZE })
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto w-full max-w-[1800px]">
       <PageHeader
         title="Returns"
         description="Returned items go back into their original batch."
@@ -79,7 +79,7 @@ export default function ReturnsPage() {
                     <TableHead>Invoice</TableHead>
                     <TableHead>Items</TableHead>
                     <TableHead>Reason</TableHead>
-                    <TableHead>By</TableHead>
+                    <TableHead className="hidden 2xl:table-cell">By</TableHead>
                     <TableHead className="text-right">Refund</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -100,8 +100,8 @@ export default function ReturnsPage() {
                           </p>
                         ))}
                       </TableCell>
-                      <TableCell className="max-w-48 truncate text-muted-foreground">{r.reason}</TableCell>
-                      <TableCell className="text-muted-foreground">{r.created_by_name}</TableCell>
+                      <TableCell className="max-w-40 truncate text-muted-foreground" title={r.reason}>{r.reason}</TableCell>
+                      <TableCell className="hidden text-muted-foreground 2xl:table-cell">{r.created_by_name}</TableCell>
                       <TableCell className="text-right font-medium tabular-nums">{formatMoney(r.refund_amount)}</TableCell>
                     </TableRow>
                   ))}

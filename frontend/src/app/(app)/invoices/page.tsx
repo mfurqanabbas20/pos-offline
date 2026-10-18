@@ -42,7 +42,7 @@ export default function InvoicesPage() {
   const hasFilters = search || dateFrom || dateTo || status !== ALL
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto w-full max-w-[1800px]">
       <PageHeader title="Invoices" description="Every completed sale, newest first." />
       <Card>
         <CardContent className="space-y-4">

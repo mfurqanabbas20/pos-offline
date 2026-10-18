@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Suspense>
           <AppSidebar />
         </Suspense>
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-6 md:px-6 2xl:px-10">{children}</main>
       </div>
     </AuthGuard>
   )

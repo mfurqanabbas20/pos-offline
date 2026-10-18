@@ -40,7 +40,7 @@ export function NewReturnFlow() {
   const [invoiceId, setInvoiceId] = useState<number | null>(initial)
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto w-full max-w-5xl">
       <Button asChild variant="ghost" className="mb-2 -ml-3 text-muted-foreground">
         <Link href="/returns">
           <ArrowLeft /> Returns

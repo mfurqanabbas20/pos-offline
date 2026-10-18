@@ -29,7 +29,7 @@ export default function InventoryPage() {
   const [batchSheet, setBatchSheet] = useState<{ open: boolean; batch?: Batch | null }>({ open: false })
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto w-full max-w-[1800px]">
       <PageHeader
         title="Inventory"
         description="Stock is tracked per batch. Products sell from the earliest-expiring batch first."
@@ -161,7 +161,7 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
                   <TableHead>Product</TableHead>
                   <TableHead>Batch</TableHead>
                   <TableHead>Expiry</TableHead>
-                  <TableHead className="text-right">Cost</TableHead>
+                  <TableHead className="hidden xl:table-cell text-right">Cost</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Batch qty</TableHead>
                   <TableHead className="text-right">Product stock</TableHead>
@@ -184,7 +184,7 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
                           <ExpiryBadge status={b.expiry_status} days={b.days_to_expiry} />
                         </div>
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{formatMoney(b.purchase_price)}</TableCell>
+                      <TableCell className="hidden xl:table-cell text-right tabular-nums">{formatMoney(b.purchase_price)}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatMoney(b.selling_price)}</TableCell>
                       <TableCell className="text-right font-medium tabular-nums">{b.quantity}</TableCell>
                       <TableCell className="text-right">
@@ -263,10 +263,10 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
                 <TableRow>
                   <TableHead>Product</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Cost</TableHead>
+                  <TableHead className="hidden xl:table-cell text-right">Cost</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Sellable stock</TableHead>
-                  <TableHead className="text-right">Reorder at</TableHead>
+                  <TableHead className="hidden xl:table-cell text-right">Reorder at</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -279,7 +279,7 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
                       <p className="text-xs text-muted-foreground">{p.sku}</p>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{p.category_name}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatMoney(p.purchase_price)}</TableCell>
+                    <TableCell className="hidden xl:table-cell text-right tabular-nums">{formatMoney(p.purchase_price)}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatMoney(p.selling_price)}</TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
                       {p.sellable_stock}
@@ -287,7 +287,7 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
                         <span className="block text-xs font-normal text-red-700">+{p.stock - p.sellable_stock} expired</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{p.reorder_level}</TableCell>
+                    <TableCell className="hidden xl:table-cell text-right tabular-nums text-muted-foreground">{p.reorder_level}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {!p.is_active && <Badge variant="secondary">Inactive</Badge>}

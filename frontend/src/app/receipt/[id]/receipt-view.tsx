@@ -61,8 +61,8 @@ export function ReceiptView() {
       <div className="receipt mx-auto w-[80mm] rounded-sm bg-white px-[4mm] py-[5mm] font-mono text-[11px] leading-snug text-black shadow-md">
         <div className="text-center">
           <p className="text-[14px] font-bold uppercase">{config.pharmacy.name}</p>
-          <p>{config.pharmacy.address}</p>
-          <p>Tel: {config.pharmacy.phone}</p>
+          {config.pharmacy.address && <p>{config.pharmacy.address}</p>}
+          {config.pharmacy.phone && <p>Tel: {config.pharmacy.phone}</p>}
         </div>
 
         <Divider />

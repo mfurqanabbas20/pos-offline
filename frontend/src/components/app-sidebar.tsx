@@ -22,12 +22,12 @@ export function AppSidebar() {
   const { user, logout } = useAuth()
 
   return (
-    <aside className="no-print sticky top-0 flex h-screen w-20 shrink-0 flex-col border-r bg-sidebar lg:w-60">
-      <div className="flex h-16 items-center gap-2.5 px-5">
+    <aside className="no-print sticky top-0 flex h-screen w-20 shrink-0 flex-col overflow-y-auto border-r bg-sidebar xl:w-60">
+      <div className="flex h-16 shrink-0 items-center justify-center gap-2.5 px-5 xl:justify-start">
         <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Pill className="size-5" />
         </span>
-        <span className="hidden truncate font-semibold tracking-tight lg:block">{config.pharmacy.name}</span>
+        <span className="hidden truncate font-semibold tracking-tight xl:block">{config.pharmacy.name}</span>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
@@ -39,25 +39,25 @@ export function AppSidebar() {
               href={href}
               title={label}
               className={cn(
-                "flex h-12 items-center justify-center gap-3 rounded-xl px-3 text-[0.95rem] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:justify-start",
+                "flex h-12 items-center justify-center gap-3 rounded-xl px-3 text-[0.95rem] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground xl:justify-start",
                 active && "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               )}
             >
               <Icon className="size-5 shrink-0" />
-              <span className="hidden lg:inline">{label}</span>
+              <span className="hidden xl:inline">{label}</span>
             </Link>
           )
         })}
       </nav>
 
       <div className="border-t p-3">
-        <div className="hidden px-2 pb-2 lg:block">
+        <div className="hidden px-2 pb-2 xl:block">
           <p className="truncate text-sm font-medium">{user?.full_name}</p>
           <p className="truncate text-xs text-muted-foreground">@{user?.username}</p>
         </div>
-        <Button variant="ghost" className="h-11 w-full justify-center text-muted-foreground lg:justify-start" onClick={logout}>
+        <Button variant="ghost" className="h-11 w-full justify-center text-muted-foreground xl:justify-start" onClick={logout}>
           <LogOut className="size-5" />
-          <span className="hidden lg:inline">Sign out</span>
+          <span className="hidden xl:inline">Sign out</span>
         </Button>
       </div>
     </aside>

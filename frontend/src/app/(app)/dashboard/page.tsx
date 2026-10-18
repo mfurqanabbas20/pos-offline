@@ -23,7 +23,7 @@ export default function DashboardPage() {
   const isCurrentMonth = month >= currentMonth()
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto w-full max-w-[1800px]">
       <PageHeader
         title="Dashboard"
         description={`Performance for ${formatMonth(month)}`}
@@ -57,7 +57,7 @@ export default function DashboardPage() {
         <ErrorState error={dashboard.error} onRetry={() => dashboard.refetch()} />
       ) : (
         <div className={cn("space-y-6 transition-opacity", dashboard.isFetching && dashboard.isPlaceholderData && "opacity-60")}>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
             <StatCard label="Total sales" value={data && formatMoney(data.total_sales)} />
             <StatCard label="Returns" value={data && formatMoney(data.total_returns)} />
             <StatCard label="Net revenue" value={data && formatMoney(data.net_revenue)} highlight />

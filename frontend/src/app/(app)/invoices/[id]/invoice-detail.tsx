@@ -15,13 +15,13 @@ export function InvoiceDetailView() {
   const { id } = useParams<{ id: string }>()
   const invoice = useInvoice(Number(id))
 
-  if (invoice.isLoading) return <LoadingState rows={6} className="mx-auto max-w-5xl" />
+  if (invoice.isLoading) return <LoadingState rows={6} className="mx-auto max-w-7xl" />
   if (invoice.isError) return <ErrorState error={invoice.error} onRetry={() => invoice.refetch()} />
   const data = invoice.data!
   const canReturn = data.status !== "returned"
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto w-full max-w-7xl">
       <Button asChild variant="ghost" className="mb-2 -ml-3 text-muted-foreground">
         <Link href="/invoices">
           <ArrowLeft /> Invoices
@@ -48,8 +48,8 @@ export function InvoiceDetailView() {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle>Items</CardTitle>
           </CardHeader>
@@ -90,7 +90,7 @@ export function InvoiceDetailView() {
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
+        <div className="grid content-start gap-6 md:grid-cols-2 xl:grid-cols-1">
           <Card>
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle>Summary</CardTitle>
@@ -126,7 +126,7 @@ export function InvoiceDetailView() {
                           {formatDateTime(r.date)} · {r.reason}
                         </p>
                       </div>
-                      <span className="font-medium text-amber-700 tabular-nums">−{formatMoney(r.refund_amount)}</span>
+                      <span className="font-medium whitespace-nowrap text-amber-700 tabular-nums">−{formatMoney(r.refund_amount)}</span>
                     </li>
                   ))}
                 </ul>

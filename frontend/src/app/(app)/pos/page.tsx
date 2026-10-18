@@ -166,7 +166,7 @@ export default function PosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto w-full max-w-[1800px]">
       {/* ---------- Product search ---------- */}
       <section>
         <div className="mb-4 flex items-center justify-between gap-4">
@@ -327,7 +327,7 @@ export default function PosPage() {
 
       {/* ---------- Cart & checkout (right drawer) ---------- */}
       <Sheet open={cartOpen} onOpenChange={setCartOpen}>
-        <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-md">
+        <SheetContent side="right" className="w-full gap-0 sm:max-w-md">
           <SheetHeader className="border-b pr-14">
             <div className="flex items-center justify-between gap-2">
               <SheetTitle className="flex items-center gap-2 text-lg">
@@ -342,11 +342,12 @@ export default function PosPage() {
             </div>
             <SheetDescription className="sr-only">Review items, take payment and complete the sale.</SheetDescription>
           </SheetHeader>
-        <div className="space-y-4 p-4">
+        {/* Middle scrolls; totals and the Complete button stay pinned at the bottom on short screens. */}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
           {cart.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">Tap a product or scan a barcode to start.</p>
           ) : (
-            <ul className="max-h-[38vh] space-y-2 overflow-y-auto pr-1">
+            <ul className="space-y-2">
               {cart.map((line) => (
                 <li key={line.product.id} className="rounded-lg border p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -458,6 +459,9 @@ export default function PosPage() {
             </div>
           )}
 
+        </div>
+
+        <div className="space-y-3 border-t bg-background p-4">
           <dl className="space-y-1.5 rounded-xl bg-muted/60 p-4 text-sm">
             <Row label="Subtotal" value={formatMoney(subtotalC / 100)} />
             {discountC > 0 && <Row label="Discount" value={`− ${formatMoney(discountC / 100)}`} />}
