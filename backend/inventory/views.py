@@ -1,0 +1,108 @@
+from django.conf import settings
+from django.db.models import Count, OuterRef, ProtectedError, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
+from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import serializers, status, viewsets
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from core.exceptions import error_response
+
+from .filters import BatchFilter, ProductFilter
+from .models import Batch, Category, Product
+from .serializers import BatchSerializer, CategorySerializer, ProductSerializer
+
+
+class ProtectedDeleteMixin:
+    """Return a clean 409 instead of a 500 when a referenced row is deleted."""
+
+    protected_message = 'This record is in use and cannot be deleted.'
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return error_response(self.protected_message, code='protected', http_status=status.HTTP_409_CONFLICT)
+
+
+class CategoryViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):
+    queryset = Category.objects.annotate(product_count=Count('products'))
+    serializer_class = CategorySerializer
+    search_fields = ['name']
+    ordering_fields = ['name', 'product_count']
+    protected_message = 'This category still has products. Move or delete them first.'
+
+
+class ProductViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):
+    queryset = Product.objects.select_related('category').with_stock()
+    serializer_class = ProductSerializer
+    filterset_class = ProductFilter
+    search_fields = ['name', 'sku', 'category__name']
+    ordering_fields = ['name', 'sku', 'selling_price', 'purchase_price', 'stock', 'sellable_stock', 'created_at']
+    ordering = ['name']
+    protected_message = 'This product has batches or sales history. Mark it inactive instead.'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Exact barcode match, used by scanners on the POS screen.
+        barcode = self.request.query_params.get('barcode')
+        if barcode:
+            queryset = queryset.filter(sku__iexact=barcode.strip())
+        return queryset
+
+
+class BatchViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):
+    serializer_class = BatchSerializer
+    filterset_class = BatchFilter
+    search_fields = ['batch_no', 'product__name', 'product__sku']
+    ordering_fields = ['expiry_date', 'quantity', 'batch_no', 'product__name', 'purchase_price', 'created_at']
+    ordering = ['expiry_date', 'id']
+    protected_message = 'This batch has been sold from and cannot be deleted. Set its quantity to 0 instead.'
+
+    def get_queryset(self):
+        # Product-level sellable stock lets each batch row show the product's low-stock state.
+        product_stock = (
+            Batch.objects.filter(product=OuterRef('product'), expiry_date__gte=timezone.localdate())
+            .values('product').annotate(total=Sum('quantity')).values('total')
+        )
+        return (
+            Batch.objects.select_related('product', 'product__category')
+            .annotate(product_sellable_stock=Coalesce(Subquery(product_stock), Value(0)))
+        )
+
+
+class InventoryReportView(APIView):
+    """Stock alerts: low-stock products, batches expiring within N days, and expired batches with stock."""
+
+    @extend_schema(
+        parameters=[OpenApiParameter('days', OpenApiTypes.INT, description='Expiry window in days (default 90).')],
+        responses=inline_serializer(
+            'InventoryReport',
+            fields={
+                'days': serializers.IntegerField(),
+                'low_stock': ProductSerializer(many=True),
+                'expiring': BatchSerializer(many=True),
+                'expired': BatchSerializer(many=True),
+            },
+        ),
+    )
+    def get(self, request):
+        try:
+            days = int(request.query_params.get('days', settings.EXPIRY_WARNING_DAYS))
+            if days < 0:
+                raise ValueError
+        except ValueError:
+            return error_response('days must be a non-negative integer.', code='validation_error')
+
+        batches = Batch.objects.select_related('product').in_stock()
+        low_stock = Product.objects.select_related('category').low_stock().order_by('sellable_stock', 'name')
+        expiring = batches.expiring_within(days).fefo()
+        expired = batches.expired().fefo()
+        return Response({
+            'days': days,
+            'low_stock': ProductSerializer(low_stock, many=True).data,
+            'expiring': BatchSerializer(expiring, many=True).data,
+            'expired': BatchSerializer(expired, many=True).data,
+        })
