@@ -4,12 +4,15 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from django.http import HttpResponse
 from rest_framework import serializers, status, viewsets
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.exceptions import error_response
 
+from . import importer
 from .filters import BatchFilter, ProductFilter
 from .models import Batch, Category, Product
 from .serializers import BatchSerializer, CategorySerializer, ProductSerializer
@@ -71,6 +74,55 @@ class BatchViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):
             Batch.objects.select_related('product', 'product__category')
             .annotate(product_sellable_stock=Coalesce(Subquery(product_stock), Value(0)))
         )
+
+
+class InventoryImportView(APIView):
+    """Bulk import products and stock batches from an Excel/CSV file.
+
+    POST multipart `file` with `commit=false` (default) to preview, `commit=true` to import.
+    Nothing is written unless every row is valid.
+    """
+
+    parser_classes = [MultiPartParser, FormParser]
+
+    @extend_schema(
+        request={'multipart/form-data': {'type': 'object', 'properties': {
+            'file': {'type': 'string', 'format': 'binary'}, 'commit': {'type': 'boolean'}}}},
+        responses=OpenApiTypes.OBJECT,
+    )
+    def post(self, request):
+        uploaded = request.FILES.get('file')
+        if uploaded is None:
+            return error_response('Choose an Excel (.xlsx) or CSV file to upload.', code='validation_error')
+        if uploaded.size > 5 * 1024 * 1024:
+            return error_response('The file is larger than 5 MB.', code='validation_error')
+        commit = str(request.data.get('commit', 'false')).lower() in ('1', 'true', 'yes')
+
+        try:
+            results, summary = importer.analyse(uploaded)
+        except importer.ImportFileError as exc:
+            return error_response(str(exc), code='invalid_file')
+
+        rows = [r.as_dict() for r in results]
+        if commit:
+            if summary['error_rows']:
+                return error_response(
+                    f'{summary["error_rows"]} row(s) have errors. Fix them and upload again; nothing was imported.',
+                    code='validation_error',
+                )
+            importer.apply(results)
+        return Response({'committed': commit, 'summary': summary, 'rows': rows})
+
+
+class InventoryImportTemplateView(APIView):
+    @extend_schema(responses={(200, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'): OpenApiTypes.BINARY})
+    def get(self, request):
+        response = HttpResponse(
+            importer.build_template(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = 'attachment; filename="inventory-import-template.xlsx"'
+        return response
 
 
 class InventoryReportView(APIView):

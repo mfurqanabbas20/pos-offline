@@ -1,14 +1,17 @@
 "use client"
 
-import { AlertTriangle, CalendarX2, ChevronLeft, ChevronRight, PackageMinus } from "lucide-react"
+import { AlertTriangle, CalendarX2, ChevronLeft, ChevronRight, Download, PackageMinus } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
+import { toast } from "sonner"
 
-import { ErrorState, ExpiryBadge, LoadingState, PageHeader } from "@/components/common"
+import { ErrorState, ExpiryBadge, LoadingState, PageHeader, Spinner } from "@/components/common"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { api } from "@/lib/api"
+import { saveBlob } from "@/lib/download"
 import { currentMonth, formatDate, formatMoney, formatMonth, shiftMonth } from "@/lib/format"
 import { useDashboard, useInventoryReport } from "@/lib/queries"
 import { cn } from "@/lib/utils"
@@ -21,6 +24,19 @@ export default function DashboardPage() {
   const inventory = useInventoryReport()
   const data = dashboard.data
   const isCurrentMonth = month >= currentMonth()
+  const [downloading, setDownloading] = useState(false)
+
+  const downloadReport = async () => {
+    setDownloading(true)
+    try {
+      saveBlob(await api.reports.monthly(month), `pharmacy-report-${month}.xlsx`)
+      toast.success(`Report for ${formatMonth(month)} downloaded`)
+    } catch (error) {
+      toast.error((error as Error).message)
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-[1800px]">
@@ -28,7 +44,7 @@ export default function DashboardPage() {
         title="Dashboard"
         description={`Performance for ${formatMonth(month)}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setMonth((m) => shiftMonth(m, -1))} aria-label="Previous month">
               <ChevronLeft />
             </Button>
@@ -48,6 +64,9 @@ export default function DashboardPage() {
               aria-label="Next month"
             >
               <ChevronRight />
+            </Button>
+            <Button onClick={downloadReport} disabled={downloading} title={`Excel report for ${formatMonth(month)}`}>
+              {downloading ? <Spinner /> : <Download />} Download report
             </Button>
           </div>
         }

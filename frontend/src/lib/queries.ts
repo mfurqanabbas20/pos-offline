@@ -106,6 +106,15 @@ export function useCreateCategory() {
   })
 }
 
+/** Preview (commit=false) or import (commit=true) an inventory spreadsheet. */
+export function useInventoryImport() {
+  const invalidate = useInvalidateStock()
+  return useMutation({
+    mutationFn: ({ file, commit }: { file: File; commit: boolean }) => api.inventoryImport.upload(file, commit),
+    onSuccess: (result) => (result.committed ? invalidate() : undefined),
+  })
+}
+
 export function useCreateSale() {
   const invalidate = useInvalidateStock()
   return useMutation({ mutationFn: (data: SaleInput) => api.sales.create(data), onSuccess: () => invalidate() })

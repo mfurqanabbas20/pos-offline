@@ -4,6 +4,7 @@ import type {
   BatchInput,
   Category,
   Dashboard,
+  ImportResult,
   InventoryReport,
   Invoice,
   InvoiceDetail,
@@ -72,6 +73,10 @@ interface RequestOptions {
   body?: unknown
   params?: QueryParams
   auth?: boolean
+  /** Multipart body (file uploads); sent as-is so the browser sets the boundary. */
+  form?: FormData
+  /** Return the response body as a Blob (file downloads) instead of JSON. */
+  blob?: boolean
 }
 
 function buildUrl(path: string, params?: QueryParams) {
@@ -120,9 +125,9 @@ async function refreshAccessToken(): Promise<boolean> {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}, retry = true): Promise<T> {
-  const { method = "GET", body, params, auth = true } = options
-  const headers: Record<string, string> = { Accept: "application/json" }
-  if (body !== undefined) headers["Content-Type"] = "application/json"
+  const { method = "GET", body, params, auth = true, form, blob } = options
+  const headers: Record<string, string> = { Accept: blob ? "*/*" : "application/json" }
+  if (body !== undefined && !form) headers["Content-Type"] = "application/json"
   if (auth && tokens.access) headers.Authorization = `Bearer ${tokens.access}`
 
   let response: Response
@@ -130,7 +135,7 @@ async function request<T>(path: string, options: RequestOptions = {}, retry = tr
     response = await fetch(buildUrl(path, params), {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: form ?? (body === undefined ? undefined : JSON.stringify(body)),
     })
   } catch {
     throw new ApiError("Cannot reach the server. Check that the backend is running.", 0, "network_error")
@@ -143,6 +148,7 @@ async function request<T>(path: string, options: RequestOptions = {}, retry = tr
   }
   if (!response.ok) throw await parseError(response)
   if (response.status === 204) return undefined as T
+  if (blob) return (await response.blob()) as T
   return (await response.json()) as T
 }
 
@@ -168,6 +174,15 @@ export const api = {
   products: crud<Product, ProductInput>("/products"),
   batches: crud<Batch, BatchInput>("/batches"),
   inventory: (days?: number) => request<InventoryReport>("/inventory/", { params: { days } }),
+  inventoryImport: {
+    upload: (file: File, commit: boolean) => {
+      const form = new FormData()
+      form.append("file", file)
+      form.append("commit", String(commit))
+      return request<ImportResult>("/inventory/import/", { method: "POST", form })
+    },
+    template: () => request<Blob>("/inventory/import/template/", { blob: true }),
+  },
   sales: {
     create: (data: SaleInput) => request<InvoiceDetail>("/sales/", { method: "POST", body: data }),
   },
@@ -181,4 +196,7 @@ export const api = {
     create: (data: ReturnInput) => request<SalesReturn>("/returns/", { method: "POST", body: data }),
   },
   dashboard: (month?: string) => request<Dashboard>("/dashboard/", { params: { month } }),
+  reports: {
+    monthly: (month: string) => request<Blob>("/reports/monthly/", { params: { month }, blob: true }),
+  },
 }

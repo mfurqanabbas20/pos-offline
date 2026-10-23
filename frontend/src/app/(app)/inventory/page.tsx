@@ -1,6 +1,6 @@
 "use client"
 
-import { PackagePlus, Pencil, Plus, Search } from "lucide-react"
+import { FileSpreadsheet, PackagePlus, Pencil, Plus, Search } from "lucide-react"
 import { useState } from "react"
 
 import { EmptyState, ErrorState, ExpiryBadge, LoadingState, LowStockBadge, PageHeader, Pagination } from "@/components/common"
@@ -18,6 +18,7 @@ import type { Batch, Product } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 import { BatchSheet } from "./batch-sheet"
+import { ImportDialog } from "./import-dialog"
 import { ProductSheet } from "./product-sheet"
 
 const PAGE_SIZE = 20
@@ -27,6 +28,7 @@ export default function InventoryPage() {
   const [tab, setTab] = useState("batches")
   const [productSheet, setProductSheet] = useState<{ open: boolean; product?: Product | null }>({ open: false })
   const [batchSheet, setBatchSheet] = useState<{ open: boolean; batch?: Batch | null }>({ open: false })
+  const [importOpen, setImportOpen] = useState(false)
 
   return (
     <div className="mx-auto w-full max-w-[1800px]">
@@ -35,6 +37,9 @@ export default function InventoryPage() {
         description="Stock is tracked per batch. Products sell from the earliest-expiring batch first."
         actions={
           <>
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <FileSpreadsheet /> Import Excel
+            </Button>
             <Button variant="outline" onClick={() => setProductSheet({ open: true, product: null })}>
               <Plus /> Add product
             </Button>
@@ -64,6 +69,7 @@ export default function InventoryPage() {
 
       <ProductSheet open={productSheet.open} product={productSheet.product} onOpenChange={(open) => setProductSheet((s) => ({ ...s, open }))} />
       <BatchSheet open={batchSheet.open} batch={batchSheet.batch} onOpenChange={(open) => setBatchSheet((s) => ({ ...s, open }))} />
+      <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   )
 }

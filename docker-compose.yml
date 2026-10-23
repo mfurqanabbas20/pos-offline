@@ -29,6 +29,7 @@ services:
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
       CORS_ALLOWED_ORIGINS: http://localhost:3000
       TIME_ZONE: ${TIME_ZONE:-UTC}
+      PHARMACY_NAME: ${PHARMACY_NAME:-Pharmacy}
       SEED_DATA: ${SEED_DATA:-false} # set true to load demo data into an empty database
     depends_on:
       db:

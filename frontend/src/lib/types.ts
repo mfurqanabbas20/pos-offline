@@ -198,3 +198,26 @@ export interface Dashboard {
 }
 
 export type QueryParams = Record<string, string | number | boolean | undefined | null>
+
+export interface ImportRow {
+  row: number
+  sku: string
+  name: string
+  product_action: "create" | "update"
+  batch_action: "create" | ""
+  quantity: number
+  errors: string[]
+}
+
+export interface ImportResult {
+  committed: boolean
+  summary: {
+    rows: number
+    products_to_create: number
+    products_to_update: number
+    batches_to_create: number
+    units_to_add: number
+    error_rows: number
+  }
+  rows: ImportRow[]
+}

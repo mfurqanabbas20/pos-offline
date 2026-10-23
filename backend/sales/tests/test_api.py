@@ -125,3 +125,52 @@ class InventoryAndDashboardTests(ApiTestCase):
         response = self.client.get('/api/dashboard/', {'month': '2026-13'})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data['error']['code'], 'validation_error')
+
+
+class MonthlyReportTests(ApiTestCase):
+    def test_monthly_report_workbook_matches_dashboard(self):
+        import io
+
+        from openpyxl import load_workbook
+
+        sale = self.client.post('/api/sales/', {
+            'items': [{'product': self.product.pk, 'quantity': 5}], 'payment_method': 'card', 'customer_name': 'Hina',
+        }, format='json').data
+        self.client.post('/api/returns/', {
+            'invoice': sale['id'], 'reason': 'Damaged', 'items': [{'invoice_item': sale['items'][0]['id'], 'quantity': 1}],
+        }, format='json')
+
+        month = timezone.localdate().strftime('%Y-%m')
+        response = self.client.get('/api/reports/monthly/', {'month': month})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(f'pharmacy-report-{month}.xlsx', response['Content-Disposition'])
+
+        wb = load_workbook(io.BytesIO(response.content))
+        self.assertEqual(wb.sheetnames, ['Summary', 'Daily', 'Products sold', 'Invoices', 'Returns', 'Stock alerts'])
+        summary = {row[0]: row[1] for row in wb['Summary'].iter_rows(min_row=5, max_col=2, values_only=True) if row[0]}
+        self.assertEqual(summary['Total sales'], 50.0)
+        self.assertEqual(summary['Returns (refunded)'], 10.0)
+        self.assertEqual(summary['Profit'], 16.0)
+
+        products = list(wb['Products sold'].iter_rows(min_row=5, max_row=5, values_only=True))[0]
+        self.assertEqual(products[3:5], (5, 1))     # qty sold, qty returned
+        self.assertEqual(products[8], 16.0)         # profit net of the return
+        invoice_row = list(wb['Invoices'].iter_rows(min_row=5, max_row=5, values_only=True))[0]
+        self.assertEqual((invoice_row[0], invoice_row[2]), (sale['number'], 'Hina'))
+
+    def test_report_rejects_bad_month(self):
+        self.assertEqual(self.client.get('/api/reports/monthly/', {'month': 'nope'}).status_code, 400)
+
+    def test_user_text_is_never_written_as_a_formula(self):
+        import io
+
+        from openpyxl import load_workbook
+
+        payload = '=HYPERLINK("http://evil.example","x")'
+        self.client.post('/api/sales/', {
+            'items': [{'product': self.product.pk, 'quantity': 1}], 'payment_method': 'card', 'customer_name': payload,
+        }, format='json')
+        response = self.client.get('/api/reports/monthly/', {'month': timezone.localdate().strftime('%Y-%m')})
+        cell = load_workbook(io.BytesIO(response.content))['Invoices']['C5']
+        self.assertEqual(cell.value, payload)
+        self.assertEqual(cell.data_type, 's')
