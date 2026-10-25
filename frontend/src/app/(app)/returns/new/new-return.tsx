@@ -31,6 +31,7 @@ import { formatDate, formatDateTime, formatMoney, toNumber } from "@/lib/format"
 import { useCreateReturn, useInfiniteInvoices, useInvoice } from "@/lib/queries"
 import type { InvoiceDetail } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { invoiceHref } from "@/lib/routes"
 
 const REASONS = ["Wrong item dispensed", "Customer changed mind", "Damaged packaging", "Doctor changed prescription"]
 
@@ -184,7 +185,7 @@ function ReturnForm({ invoiceId, onChangeInvoice }: { invoiceId: number; onChang
       {
         onSuccess: (ret) => {
           toast.success(`Return ${ret.number} recorded`, { description: `Refund ${formatMoney(ret.refund_amount)}` })
-          router.push(`/invoices/${data.id}`)
+          router.push(invoiceHref(data.id))
         },
         onError: (error) => {
           setConfirming(false)

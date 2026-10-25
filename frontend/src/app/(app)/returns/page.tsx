@@ -14,6 +14,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { formatDateTime, formatMoney } from "@/lib/format"
 import { useInfiniteReturns } from "@/lib/queries"
 import { cn } from "@/lib/utils"
+import { invoiceHref } from "@/lib/routes"
 
 
 export default function ReturnsPage() {
@@ -92,7 +93,7 @@ export default function ReturnsPage() {
                       <TableCell className="font-medium">{r.number}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDateTime(r.date)}</TableCell>
                       <TableCell>
-                        <Link href={`/invoices/${r.invoice}`} className="font-medium text-primary hover:underline">
+                        <Link href={invoiceHref(r.invoice)} className="font-medium text-primary hover:underline">
                           {r.invoice_number}
                         </Link>
                       </TableCell>

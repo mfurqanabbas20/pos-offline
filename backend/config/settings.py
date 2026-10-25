@@ -52,6 +52,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'core.middleware.FrontendTrailingSlashMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -127,6 +128,15 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Windows 7 package: the backend also serves the pre-built app screens (Next.js static export), so the
+# whole POS is one process on one port and no Node.js is needed on the PC. Point POS_FRONTEND_DIR at
+# the exported folder (frontend/out). /api, /admin and /static still go to Django as usual.
+POS_FRONTEND_DIR = os.environ.get('POS_FRONTEND_DIR')
+if POS_FRONTEND_DIR:
+    WHITENOISE_ROOT = POS_FRONTEND_DIR
+    WHITENOISE_INDEX_FILE = True                       # /pos/ -> pos/index.html
+    WHITENOISE_IMMUTABLE_FILE_TEST = r'^/_next/static/'  # content-hashed: cache forever
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # The POS sends no email; in production use the SMTP backend so nothing is silently printed to a console.
@@ -169,7 +179,7 @@ LOGGING = {
 
 
 # CORS
-CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000')
+CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', 'https://h7t9b6j5-3000.inc1.devtunnels.ms,http://127.0.0.1:3000')
 
 
 # Django REST Framework
@@ -209,4 +219,4 @@ SPECTACULAR_SETTINGS = {
 # Business configuration
 EXPIRY_WARNING_DAYS = int(os.environ.get('EXPIRY_WARNING_DAYS', '90'))
 # Shown on downloadable reports.
-PHARMACY_NAME = os.environ.get('PHARMACY_NAME', 'Tasnim Pharmacy')
+PHARMACY_NAME = os.environ.get('PHARMACY_NAME', 'Tasneem Pharmacy')

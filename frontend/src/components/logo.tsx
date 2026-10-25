@@ -4,7 +4,7 @@ import { config } from "@/lib/config"
 import { cn } from "@/lib/utils"
 
 /**
- * Tasnim Pharmacy mark: a "T" whose stem is a two-tone capsule, with a small medical cross.
+ * Tasneem Pharmacy mark: a "T" whose stem is a two-tone capsule, with a small medical cross.
  * `color` = teal tile for the app; `mono` = black outline glyph for thermal receipts.
  */
 export function LogoMark({ className, variant = "color" }: { className?: string; variant?: "color" | "mono" }) {
@@ -51,7 +51,7 @@ export function LogoMark({ className, variant = "color" }: { className?: string;
   )
 }
 
-/** Logo + two-line wordmark ("Tasnim" / "Pharmacy"). The wordmark hides when `compact`. */
+/** Logo + two-line wordmark ("Tasneem" / "Pharmacy"). The wordmark hides when `compact`. */
 export function Logo({ className, compact, size = "md" }: { className?: string; compact?: boolean; size?: "md" | "lg" }) {
   const [first, ...rest] = config.pharmacy.name.split(" ")
   const tagline = rest.join(" ")

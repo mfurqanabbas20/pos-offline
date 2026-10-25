@@ -1,4 +1,4 @@
-# Shared helpers for the Tasnim Pharmacy POS Windows scripts. Dot-source this file:  . "$PSScriptRoot\common.ps1"
+# Shared helpers for the Tasneem Pharmacy POS Windows scripts. Dot-source this file:  . "$PSScriptRoot\common.ps1"
 # Windows PowerShell 5.1 compatible. Keep this file ASCII-only (5.1 reads BOM-less files as ANSI).
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +13,7 @@ $EnvFile     = Join-Path $BackendDir '.env.production'
 
 # Pharmacy data lives outside the app folder so updating or replacing the app never touches it.
 # POS_DATA_ROOT can point somewhere else (e.g. a second drive, or a test folder).
-$DataRoot     = if ($env:POS_DATA_ROOT) { $env:POS_DATA_ROOT } else { Join-Path $env:ProgramData 'TasnimPOS' }
+$DataRoot     = if ($env:POS_DATA_ROOT) { $env:POS_DATA_ROOT } else { Join-Path $env:ProgramData 'TasneemPOS' }
 $DataDir      = Join-Path $DataRoot 'data'
 $LogDir       = Join-Path $DataRoot 'logs'
 $RunDir       = Join-Path $DataRoot 'run'
@@ -36,7 +36,7 @@ function Ensure-Dir([string]$Path) {
 
 function Read-Settings {
     if (-not (Test-Path $SettingsFile)) {
-        Fail "Not set up yet. Run 'Setup Tasnim POS.cmd' (deploy\windows\setup.ps1) first."
+        Fail "Not set up yet. Run 'Setup Tasneem POS.cmd' (deploy\windows\setup.ps1) first."
     }
     return Get-Content $SettingsFile -Raw | ConvertFrom-Json
 }

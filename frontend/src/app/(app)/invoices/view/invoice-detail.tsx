@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Printer, Undo2 } from "lucide-react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 
 import { ErrorState, InvoiceStatusBadge, LoadingState, PageHeader } from "@/components/common"
 import { Button } from "@/components/ui/button"
@@ -10,9 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { discountPercentLabel, formatDate, formatDateTime, formatMoney } from "@/lib/format"
 import { useInvoice } from "@/lib/queries"
+import { receiptHref } from "@/lib/routes"
 
 export function InvoiceDetailView() {
-  const { id } = useParams<{ id: string }>()
+  const id = useSearchParams().get("id")
   const invoice = useInvoice(Number(id))
 
   if (invoice.isLoading) return <LoadingState rows={6} className="mx-auto max-w-7xl" />
@@ -33,7 +34,7 @@ export function InvoiceDetailView() {
         actions={
           <>
             <Button asChild variant="outline" size="lg">
-              <Link href={`/receipt/${data.id}?print=1`}>
+              <Link href={receiptHref(data.id, true)}>
                 <Printer /> Print receipt again
               </Link>
             </Button>

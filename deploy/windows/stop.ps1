@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Stops Tasnim Pharmacy POS (both the server and the app screens).
+  Stops Tasneem Pharmacy POS (both the server and the app screens).
 #>
 . "$PSScriptRoot\common.ps1"
 $s = Read-Settings
@@ -30,4 +30,4 @@ foreach ($port in @($s.backendPort, $s.frontendPort)) {
     }
 }
 
-if ($stopped -gt 0) { Write-Ok 'Tasnim POS stopped.' } else { Write-Ok 'Tasnim POS was not running.' }
+if ($stopped -gt 0) { Write-Ok 'Tasneem POS stopped.' } else { Write-Ok 'Tasneem POS was not running.' }

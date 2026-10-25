@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Makes a safe copy of the POS database in C:\ProgramData\TasnimPOS\backups and keeps the last $Keep copies.
+  Makes a safe copy of the POS database in C:\ProgramData\TasneemPOS\backups and keeps the last $Keep copies.
   Safe while the POS is running (uses SQLite's online backup, or pg_dump for PostgreSQL).
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File deploy\windows\backup.ps1

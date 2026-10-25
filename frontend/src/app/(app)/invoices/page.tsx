@@ -15,6 +15,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { formatDateTime, formatMoney } from "@/lib/format"
 import { useInfiniteInvoices } from "@/lib/queries"
 import { cn } from "@/lib/utils"
+import { invoiceHref } from "@/lib/routes"
 
 const ALL = "all"
 
@@ -112,8 +113,8 @@ export default function InvoicesPage() {
                     <TableRow
                       key={invoice.id}
                       className="h-14 cursor-pointer"
-                      onClick={() => router.push(`/invoices/${invoice.id}`)}
-                      onKeyDown={(e) => e.key === "Enter" && router.push(`/invoices/${invoice.id}`)}
+                      onClick={() => router.push(invoiceHref(invoice.id))}
+                      onKeyDown={(e) => e.key === "Enter" && router.push(invoiceHref(invoice.id))}
                       tabIndex={0}
                     >
                       <TableCell className="font-medium text-primary">{invoice.number}</TableCell>

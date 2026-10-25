@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Starts Tasnim Pharmacy POS in production mode (hidden windows) and opens it in the browser.
+  Starts Tasneem Pharmacy POS in production mode (hidden windows) and opens it in the browser.
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File deploy\windows\start.ps1
   powershell -ExecutionPolicy Bypass -File deploy\windows\start.ps1 -NoBrowser
@@ -16,12 +16,12 @@ foreach ($d in @($LogDir, $RunDir)) { Ensure-Dir $d }
 
 # Already running? Just open the app.
 if ((Test-PortInUse $s.backendPort) -and (Test-PortInUse $s.frontendPort) -and (Wait-Http $healthUrl 3)) {
-    Write-Ok 'Tasnim POS is already running.'
+    Write-Ok 'Tasneem POS is already running.'
     if (-not $NoBrowser) { Start-Process $appUrl }
     exit 0
 }
 foreach ($port in @($s.backendPort, $s.frontendPort)) {
-    if (Test-PortInUse $port) { Fail "Port $port is used by another program. Close it (or run Stop Tasnim POS) and try again." }
+    if (Test-PortInUse $port) { Fail "Port $port is used by another program. Close it (or run Stop Tasneem POS) and try again." }
 }
 if (-not (Test-Path (Join-Path $FrontendDir '.next\BUILD_ID'))) { Fail 'The app has not been built. Run setup first.' }
 

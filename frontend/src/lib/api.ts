@@ -82,7 +82,10 @@ interface RequestOptions {
 }
 
 function buildUrl(path: string, params?: QueryParams) {
-  const url = new URL(`${config.apiUrl}${path}`)
+  // apiUrl may be absolute (dev: http://localhost:8000/api) or relative ("/api" when the backend also
+  // serves the app, as in the Windows 7 package).
+  const base = typeof window === "undefined" ? "http://localhost" : window.location.origin
+  const url = new URL(`${config.apiUrl}${path}`, base)
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, String(value))
   }

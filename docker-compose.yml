@@ -29,7 +29,7 @@ services:
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
       CORS_ALLOWED_ORIGINS: http://localhost:3000
       TIME_ZONE: ${TIME_ZONE:-UTC}
-      PHARMACY_NAME: ${PHARMACY_NAME:-Tasnim Pharmacy}
+      PHARMACY_NAME: ${PHARMACY_NAME:-Tasneem Pharmacy}
       SEED_DATA: ${SEED_DATA:-false} # set true to load demo data into an empty database
     depends_on:
       db:
@@ -43,7 +43,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000/api
         NEXT_PUBLIC_CURRENCY: ${CURRENCY:-PKR}
-        NEXT_PUBLIC_PHARMACY_NAME: ${PHARMACY_NAME:-Tasnim Pharmacy}
+        NEXT_PUBLIC_PHARMACY_NAME: ${PHARMACY_NAME:-Tasneem Pharmacy}
     depends_on:
       - backend
     ports:

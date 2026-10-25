@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  One-time (and re-runnable) production setup of Tasnim Pharmacy POS on a Windows PC.
+  One-time (and re-runnable) production setup of Tasneem Pharmacy POS on a Windows PC.
 
 .DESCRIPTION
   Checks Python and Node.js, installs dependencies, writes production settings, prepares the
@@ -12,7 +12,7 @@
   powershell -ExecutionPolicy Bypass -File deploy\windows\setup.ps1 -InstallAutostart
 #>
 param(
-    [string]$PharmacyName = 'Tasnim Pharmacy',
+    [string]$PharmacyName = 'Tasneem Pharmacy',
     [string]$TimeZone = 'Asia/Karachi',
     [int]$BackendPort = 8000,
     [int]$FrontendPort = 3000,
@@ -27,7 +27,7 @@ param(
 
 . "$PSScriptRoot\common.ps1"
 
-Write-Host "Tasnim Pharmacy POS - production setup" -ForegroundColor White
+Write-Host "Tasneem Pharmacy POS - production setup" -ForegroundColor White
 Write-Note "App folder:  $RepoRoot"
 Write-Note "Data folder: $DataRoot"
 
@@ -59,7 +59,7 @@ if ($nv -lt [version]'20.9.0') { Fail "Node.js $nodeVer is too old. Install Node
 Write-Ok "Node.js found: $nodeVer"
 
 if ((Test-PortInUse $BackendPort) -or (Test-PortInUse $FrontendPort)) {
-    Write-Warn "Port $BackendPort or $FrontendPort is in use. If the POS is running, stop it first ('Stop Tasnim POS'). Continuing."
+    Write-Warn "Port $BackendPort or $FrontendPort is in use. If the POS is running, stop it first ('Stop Tasneem POS'). Continuing."
 }
 
 foreach ($d in @($DataRoot, $DataDir, $LogDir, $RunDir, $BackupDir)) { Ensure-Dir $d }
@@ -123,7 +123,7 @@ Pop-Location
 if ($hasAdmin -ne 'True') {
     Write-Step 'Create the owner login (you will use this to sign in)'
     $username = $OwnerUsername
-    while (-not $username) { $username = (Read-Host '    Choose a username (e.g. tasnim)').Trim() }
+    while (-not $username) { $username = (Read-Host '    Choose a username (e.g. tasneem)').Trim() }
     $password = $OwnerPassword
     while (-not $password) {
         $p1 = Read-Host '    Choose a password (at least 8 characters)' -AsSecureString
@@ -186,6 +186,6 @@ Write-Ok "Saved $SettingsFile"
 if ($InstallAutostart) { & "$PSScriptRoot\install-autostart.ps1" }
 
 Write-Host "`nSetup complete." -ForegroundColor Green
-Write-Host "  Start the POS:   double-click 'Start Tasnim POS.cmd' (or run deploy\windows\start.ps1)"
+Write-Host "  Start the POS:   double-click 'Start Tasneem POS.cmd' (or run deploy\windows\start.ps1)"
 Write-Host "  Open in browser: http://localhost:$FrontendPort"
 if (-not $InstallAutostart) { Write-Host "  Start automatically at login + nightly backup: run deploy\windows\install-autostart.ps1" }

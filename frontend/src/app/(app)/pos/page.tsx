@@ -23,6 +23,7 @@ import { formatMoney, toDecimalString, toNumber } from "@/lib/format"
 import { useCreateSale, useInfiniteProducts } from "@/lib/queries"
 import type { PaymentMethod, Product, SaleUnit } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { receiptHref } from "@/lib/routes"
 
 /** One bill line per medicine *and* unit: "Hyper (box of 10) × 2" and "Hyper (loose) × 3" are separate lines. */
 interface CartLine {
@@ -208,7 +209,7 @@ export default function PosPage() {
             duration: 6000,
           })
           resetSale()
-          router.push(`/receipt/${invoice.id}?print=1`)
+          router.push(receiptHref(invoice.id, true))
         },
         onError: (error) => {
           toast.error(error instanceof ApiError ? error.message : "The sale could not be saved. Please try again.")

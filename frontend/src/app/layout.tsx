@@ -8,8 +8,8 @@ const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] })
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: { default: "Tasnim Pharmacy", template: "%s · Tasnim Pharmacy" },
-  description: "Point of sale and inventory for Tasnim Pharmacy.",
+  title: { default: "Tasneem Pharmacy", template: "%s · Tasneem Pharmacy" },
+  description: "Point of sale and inventory for Tasneem Pharmacy.",
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

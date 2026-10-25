@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Printer, ShoppingCart } from "lucide-react"
 import Link from "next/link"
-import { useParams, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { useEffect, useRef } from "react"
 
 import { ErrorState, LoadingState } from "@/components/common"
@@ -11,10 +11,12 @@ import { Button } from "@/components/ui/button"
 import { config } from "@/lib/config"
 import { discountPercentLabel, formatDateTime, formatMoney } from "@/lib/format"
 import { useInvoice } from "@/lib/queries"
+import { invoiceHref } from "@/lib/routes"
 
 export function ReceiptView() {
-  const { id } = useParams<{ id: string }>()
-  const autoPrint = useSearchParams().get("print") === "1"
+  const params = useSearchParams()
+  const id = params.get("id")
+  const autoPrint = params.get("print") === "1"
   const invoice = useInvoice(Number(id))
   const printed = useRef(false)
 
@@ -54,7 +56,7 @@ export function ReceiptView() {
     <div className="min-h-screen bg-muted/60 py-8 print:bg-white print:py-0">
       <div className="no-print mx-auto mb-6 flex max-w-sm flex-wrap justify-center gap-2 px-4">
         <Button asChild variant="outline">
-          <Link href={`/invoices/${data.id}`}>
+          <Link href={invoiceHref(data.id)}>
             <ArrowLeft /> Invoice
           </Link>
         </Button>
