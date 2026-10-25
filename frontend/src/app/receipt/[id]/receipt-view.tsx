@@ -31,15 +31,24 @@ export function ReceiptView() {
   if (invoice.isError) return <div className="mx-auto mt-10 max-w-md"><ErrorState error={invoice.error} onRetry={() => invoice.refetch()} /></div>
   const data = invoice.data!
 
-  // Combine batch-split lines of the same product into one receipt line.
+  // One receipt line per medicine and unit (batch splits merged): boxes and loose pieces print separately.
   const lines = Object.values(
-    data.items.reduce<Record<number, { name: string; qty: number; price: string; total: number }>>((acc, item) => {
-      const line = (acc[item.product] ??= { name: item.product_name, qty: 0, price: item.unit_price, total: 0 })
-      line.qty += item.quantity
+    data.items.reduce<Record<string, { name: string; pieces: number; packSize: number; total: number }>>((acc, item) => {
+      const isBox = item.sale_unit === "pack"
+      const line = (acc[`${item.product}:${item.sale_unit}`] ??= {
+        name: isBox ? `${item.product_name} (box of ${item.pack_size})` : item.product_name,
+        pieces: 0,
+        packSize: isBox ? item.pack_size : 1,
+        total: 0,
+      })
+      line.pieces += item.quantity
       line.total += Number(item.line_total)
       return acc
     }, {}),
-  )
+  ).map((line) => {
+    const qty = line.pieces / line.packSize // boxes for box lines, pieces otherwise
+    return { name: line.name, qty, price: line.total / qty, total: line.total }
+  })
 
   return (
     <div className="min-h-screen bg-muted/60 py-8 print:bg-white print:py-0">

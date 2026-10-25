@@ -27,19 +27,20 @@ export default function ReturnsPage() {
   return (
     <div className="mx-auto w-full max-w-[1800px]">
       <PageHeader
-        title="Returns"
-        description="Returned items go back into their original batch."
+        title="Returns & Refunds"
+        description="Items customers brought back, and the money refunded."
+        help="When a customer brings something back, press “Start a return”, find their receipt, choose the items, and give the refund shown. The items go back into stock automatically."
         actions={
           <Button asChild size="lg">
             <Link href="/returns/new">
-              <Plus /> New return
+              <Plus /> Start a return
             </Link>
           </Button>
         }
       />
       <Card>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-end gap-2">
             <div className="relative min-w-56 flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -48,12 +49,18 @@ export default function ReturnsPage() {
                   setSearch(e.target.value)
                   setPage(1)
                 }}
-                placeholder="Return #, invoice #, reason or customer…"
+                placeholder="Receipt number, customer name or reason…"
                 className="pl-9"
               />
             </div>
-            <Input type="date" value={dateFrom} onChange={(e) => (setDateFrom(e.target.value), setPage(1))} className="w-full sm:w-40" aria-label="From date" />
-            <Input type="date" value={dateTo} onChange={(e) => (setDateTo(e.target.value), setPage(1))} className="w-full sm:w-40" aria-label="To date" />
+            <label className="flex w-full flex-col gap-1 text-xs font-medium text-muted-foreground sm:w-44">
+              From date
+              <Input type="date" value={dateFrom} onChange={(e) => (setDateFrom(e.target.value), setPage(1))} />
+            </label>
+            <label className="flex w-full flex-col gap-1 text-xs font-medium text-muted-foreground sm:w-44">
+              To date
+              <Input type="date" value={dateTo} onChange={(e) => (setDateTo(e.target.value), setPage(1))} />
+            </label>
           </div>
 
           {returns.isError ? (
@@ -62,7 +69,7 @@ export default function ReturnsPage() {
             <LoadingState rows={8} />
           ) : returns.data?.results.length === 0 ? (
             <EmptyState
-              title="No returns found"
+              title="No returns yet"
               action={
                 <Button asChild variant="outline">
                   <Link href="/returns/new">Start a return</Link>
@@ -74,13 +81,13 @@ export default function ReturnsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Return</TableHead>
+                    <TableHead>Return no.</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Invoice</TableHead>
+                    <TableHead>From receipt</TableHead>
                     <TableHead>Items</TableHead>
                     <TableHead>Reason</TableHead>
-                    <TableHead className="hidden 2xl:table-cell">By</TableHead>
-                    <TableHead className="text-right">Refund</TableHead>
+                    <TableHead className="hidden 2xl:table-cell">Done by</TableHead>
+                    <TableHead className="text-right">Money refunded</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

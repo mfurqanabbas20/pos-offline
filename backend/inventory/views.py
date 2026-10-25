@@ -3,8 +3,8 @@ from django.db.models import Count, OuterRef, ProtectedError, Subquery, Sum, Val
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from django.http import HttpResponse
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import serializers, status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
@@ -15,6 +15,7 @@ from core.exceptions import error_response
 from . import importer
 from .filters import BatchFilter, ProductFilter
 from .models import Batch, Category, Product
+from .receiving import ReceiveStockSerializer, receive_stock
 from .serializers import BatchSerializer, CategorySerializer, ProductSerializer
 
 
@@ -158,3 +159,25 @@ class InventoryReportView(APIView):
             'expiring': BatchSerializer(expiring, many=True).data,
             'expired': BatchSerializer(expired, many=True).data,
         })
+
+
+class ReceiveStockView(APIView):
+    """One-step delivery: choose (or create) a medicine and add its stock, atomically."""
+
+    @extend_schema(
+        request=ReceiveStockSerializer,
+        responses=inline_serializer('ReceiveStockResult', fields={
+            'created_product': serializers.BooleanField(),
+            'product': ProductSerializer(),
+            'batch': BatchSerializer(),
+        }),
+    )
+    def post(self, request):
+        payload = ReceiveStockSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        product, batch, created = receive_stock(payload.validated_data)
+        product = Product.objects.select_related('category').with_stock().get(pk=product.pk)
+        return Response(
+            {'created_product': created, 'product': ProductSerializer(product).data, 'batch': BatchSerializer(batch).data},
+            status=status.HTTP_201_CREATED,
+        )

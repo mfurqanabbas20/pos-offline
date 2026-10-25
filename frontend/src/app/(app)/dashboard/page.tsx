@@ -1,6 +1,17 @@
 "use client"
 
-import { AlertTriangle, CalendarX2, ChevronLeft, ChevronRight, Download, PackageMinus } from "lucide-react"
+import {
+  AlertTriangle,
+  CalendarX2,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  PackageMinus,
+  PackagePlus,
+  Receipt,
+  ShoppingCart,
+  Undo2,
+} from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -11,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
+import { useAuth } from "@/lib/auth"
 import { saveBlob } from "@/lib/download"
 import { currentMonth, formatDate, formatMoney, formatMonth, shiftMonth } from "@/lib/format"
 import { useDashboard, useInventoryReport } from "@/lib/queries"
@@ -19,6 +31,7 @@ import { cn } from "@/lib/utils"
 import { SalesChart } from "./sales-chart"
 
 export default function DashboardPage() {
+  const { user } = useAuth()
   const [month, setMonth] = useState(currentMonth)
   const dashboard = useDashboard(month)
   const inventory = useInventoryReport()
@@ -40,11 +53,21 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1800px]">
-      <PageHeader
-        title="Dashboard"
-        description={`Performance for ${formatMonth(month)}`}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
+      <PageHeader title={`${greeting()}, ${user?.first_name || user?.full_name || "there"}`} description="What would you like to do?" />
+
+      <div className="mb-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <QuickAction href="/pos" icon={ShoppingCart} title="New sale" hint="Sell medicines to a customer" primary />
+        <QuickAction href="/inventory/add" icon={PackagePlus} title="Add stock" hint="Medicines arrived? Add them here" />
+        <QuickAction href="/invoices" icon={Receipt} title="Find a sale" hint="Look up or reprint a receipt" />
+        <QuickAction href="/returns/new" icon={Undo2} title="Return items" hint="Take back items and refund" />
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">{formatMonth(month)} at a glance</h2>
+          <p className="mt-1 text-muted-foreground">Use the arrows to look at another month.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setMonth((m) => shiftMonth(m, -1))} aria-label="Previous month">
               <ChevronLeft />
             </Button>
@@ -65,44 +88,43 @@ export default function DashboardPage() {
             >
               <ChevronRight />
             </Button>
-            <Button onClick={downloadReport} disabled={downloading} title={`Excel report for ${formatMonth(month)}`}>
-              {downloading ? <Spinner /> : <Download />} Download report
+            <Button variant="outline" onClick={downloadReport} disabled={downloading} title={`Save ${formatMonth(month)} as an Excel file`}>
+              {downloading ? <Spinner /> : <Download />} Download report (Excel)
             </Button>
-          </div>
-        }
-      />
+        </div>
+      </div>
 
       {dashboard.isError ? (
         <ErrorState error={dashboard.error} onRetry={() => dashboard.refetch()} />
       ) : (
         <div className={cn("space-y-6 transition-opacity", dashboard.isFetching && dashboard.isPlaceholderData && "opacity-60")}>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
-            <StatCard label="Total sales" value={data && formatMoney(data.total_sales)} />
-            <StatCard label="Returns" value={data && formatMoney(data.total_returns)} />
-            <StatCard label="Net revenue" value={data && formatMoney(data.net_revenue)} highlight />
-            <StatCard label="Profit" value={data && formatMoney(data.total_profit)} />
-            <StatCard label="Invoices" value={data && String(data.invoice_count)} />
+            <StatCard label="Money from sales" hint="Everything customers paid" value={data && formatMoney(data.total_sales)} />
+            <StatCard label="Refunds given" hint="Money paid back for returns" value={data && formatMoney(data.total_returns)} />
+            <StatCard label="Money kept" hint="Sales minus refunds" value={data && formatMoney(data.net_revenue)} highlight />
+            <StatCard label="Profit" hint="What you earned after cost" value={data && formatMoney(data.total_profit)} />
+            <StatCard label="Number of sales" hint="Receipts given" value={data && String(data.invoice_count)} />
           </div>
 
           <div className="grid gap-6 xl:grid-cols-3">
             <Card className="xl:col-span-2">
               <CardHeader>
-                <CardTitle>Daily sales vs profit</CardTitle>
-                <CardDescription>Net of returns booked on each day</CardDescription>
+                <CardTitle>Sales and profit each day</CardTitle>
+                <CardDescription>Teal = money from sales, grey = profit. Point at a day to see the numbers.</CardDescription>
               </CardHeader>
               <CardContent>{data ? <SalesChart data={data.daily} /> : <Skeleton className="h-[300px] w-full" />}</CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Top products</CardTitle>
-                <CardDescription>By revenue this month</CardDescription>
+                <CardTitle>Best-selling medicines</CardTitle>
+                <CardDescription>The 5 that brought in the most money</CardDescription>
               </CardHeader>
               <CardContent>
                 {!data ? (
                   <LoadingState rows={5} />
                 ) : data.top_products.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">No sales this month.</p>
+                  <p className="py-8 text-center text-muted-foreground">No sales in this month yet.</p>
                 ) : (
                   <ol className="space-y-3">
                     {data.top_products.map((p, i) => (
@@ -127,36 +149,43 @@ export default function DashboardPage() {
             <AlertCard
               icon={PackageMinus}
               tone="orange"
-              label="Low stock"
+              label="Running low"
               count={data?.low_stock_count}
-              hint="Products at or below reorder level"
+              hint="Medicines to order again soon"
             />
             <AlertCard
               icon={AlertTriangle}
               tone="amber"
               label="Expiring soon"
               count={data?.expiring_count}
-              hint={`Batches expiring within ${data?.expiry_warning_days ?? 90} days`}
+              hint={`Expires within ${data?.expiry_warning_days ?? 90} days. Sell these first.`}
             />
-            <AlertCard icon={CalendarX2} tone="red" label="Expired" count={data?.expired_count} hint="Expired batches still on the shelf" />
+            <AlertCard icon={CalendarX2} tone="red" label="Expired" count={data?.expired_count} hint="Remove these from the shelf" />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Low-stock products</CardTitle>
+                <CardTitle>Medicines running low</CardTitle>
               </CardHeader>
               <CardContent>
                 {inventory.isLoading ? (
                   <LoadingState rows={4} />
                 ) : (
                   <AlertList
-                    empty="All products are above their reorder level."
+                    empty="Good news: nothing is running low."
                     items={(inventory.data?.low_stock ?? []).slice(0, 6).map((p) => ({
                       key: p.id,
                       title: p.name,
-                      subtitle: `Reorder at ${p.reorder_level}`,
-                      right: <span className="font-semibold text-orange-700 tabular-nums">{p.sellable_stock} left</span>,
+                      subtitle: `You asked to be warned at ${p.reorder_level}`,
+                      right: (
+                        <span className="flex items-center gap-3">
+                          <span className="font-semibold text-orange-700 tabular-nums">{p.sellable_stock} left</span>
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/inventory/add?product=${p.id}`}>Add stock</Link>
+                          </Button>
+                        </span>
+                      ),
                     }))}
                   />
                 )}
@@ -164,18 +193,18 @@ export default function DashboardPage() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Expiry alerts</CardTitle>
+                <CardTitle>Expired or expiring soon</CardTitle>
               </CardHeader>
               <CardContent>
                 {inventory.isLoading ? (
                   <LoadingState rows={4} />
                 ) : (
                   <AlertList
-                    empty="No batches expired or expiring soon."
+                    empty="Good news: nothing is expired or expiring soon."
                     items={[...(inventory.data?.expired ?? []), ...(inventory.data?.expiring ?? [])].slice(0, 6).map((b) => ({
                       key: b.id,
                       title: b.product_name,
-                      subtitle: `Batch ${b.batch_no} · ${b.quantity} units · ${formatDate(b.expiry_date)}`,
+                      subtitle: `${b.quantity} in stock · expiry ${formatDate(b.expiry_date)} · batch ${b.batch_no}`,
                       right: <ExpiryBadge status={b.expiry_status} days={b.days_to_expiry} />,
                     }))}
                   />
@@ -189,16 +218,54 @@ export default function DashboardPage() {
   )
 }
 
-function StatCard({ label, value, highlight }: { label: string; value?: string; highlight?: boolean }) {
+function greeting() {
+  const hour = new Date().getHours()
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+}
+
+function QuickAction({
+  href,
+  icon: Icon,
+  title,
+  hint,
+  primary,
+}: {
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  hint: string
+  primary?: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group flex min-h-36 flex-col justify-between gap-4 rounded-2xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-md",
+        primary ? "border-transparent bg-primary text-primary-foreground" : "bg-card hover:border-primary/40",
+      )}
+    >
+      <span className={cn("flex size-12 items-center justify-center rounded-xl", primary ? "bg-white/20" : "bg-accent text-accent-foreground")}>
+        <Icon className="size-6" />
+      </span>
+      <span>
+        <span className="block text-xl font-semibold">{title}</span>
+        <span className={cn("mt-0.5 block text-sm", primary ? "text-primary-foreground/85" : "text-muted-foreground")}>{hint}</span>
+      </span>
+    </Link>
+  )
+}
+
+function StatCard({ label, hint, value, highlight }: { label: string; hint: string; value?: string; highlight?: boolean }) {
   return (
     <Card className={cn(highlight && "border-primary/30 bg-accent/50")}>
       <CardContent>
-        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="font-medium text-muted-foreground">{label}</p>
         {value === undefined ? (
           <Skeleton className="mt-2 h-8 w-28" />
         ) : (
           <p className={cn("mt-1 text-2xl font-semibold tracking-tight tabular-nums", highlight && "text-accent-foreground")}>{value}</p>
         )}
+        <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
       </CardContent>
     </Card>
   )

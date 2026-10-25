@@ -12,6 +12,8 @@ import type {
   Product,
   ProductInput,
   QueryParams,
+  ReceiveStockInput,
+  ReceiveStockResult,
   ReturnInput,
   SaleInput,
   SalesReturn,
@@ -174,6 +176,8 @@ export const api = {
   products: crud<Product, ProductInput>("/products"),
   batches: crud<Batch, BatchInput>("/batches"),
   inventory: (days?: number) => request<InventoryReport>("/inventory/", { params: { days } }),
+  receiveStock: (data: ReceiveStockInput) =>
+    request<ReceiveStockResult>("/inventory/receive/", { method: "POST", body: data }),
   inventoryImport: {
     upload: (file: File, commit: boolean) => {
       const form = new FormData()

@@ -22,7 +22,7 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col gap-4 sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Import from Excel</DialogTitle>
+          <DialogTitle className="text-xl">Add many medicines from Excel</DialogTitle>
           <DialogDescription>
             Add or update many products and receive their stock in one go. Nothing is saved until you confirm.
           </DialogDescription>
@@ -91,16 +91,16 @@ function ImportFlow({ onDone }: { onDone: () => void }) {
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/40 p-4">
           <div className="text-sm">
-            <p className="font-medium">1. Fill in the template</p>
-            <p className="text-muted-foreground">One row per product. Add batch no, expiry and quantity to receive stock.</p>
+            <p className="font-medium">Step 1: Download the sheet and fill it in</p>
+            <p className="text-muted-foreground">One row per medicine. The second page of the sheet explains every column.</p>
           </div>
           <Button variant="outline" onClick={downloadTemplate} disabled={downloading}>
-            {downloading ? <Spinner /> : <Download />} Download template
+            {downloading ? <Spinner /> : <Download />} Download blank sheet
           </Button>
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-medium">2. Upload the file</p>
+          <p className="mb-2 font-medium">Step 2: Choose your filled-in sheet</p>
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -120,7 +120,7 @@ function ImportFlow({ onDone }: { onDone: () => void }) {
             )}
           >
             {file ? <FileSpreadsheet className="size-7 text-primary" /> : <Upload className="size-7 text-muted-foreground" />}
-            <span className="font-medium">{file ? file.name : "Click to choose a file, or drag it here"}</span>
+            <span className="font-medium">{file ? file.name : "Click here to choose the file"}</span>
             <span className="text-xs text-muted-foreground">Excel (.xlsx) or CSV, up to 5 MB and 5,000 rows</span>
           </button>
           <input
@@ -150,7 +150,7 @@ function ImportFlow({ onDone }: { onDone: () => void }) {
 
         {summary && (
           <div className="space-y-3">
-            <p className="text-sm font-medium">3. Check the preview</p>
+            <p className="font-medium">Step 3: Check, then press Import</p>
             <div className="flex flex-wrap gap-2 text-sm">
               <Stat label="new products" value={summary.products_to_create} />
               <Stat label="updated" value={summary.products_to_update} />

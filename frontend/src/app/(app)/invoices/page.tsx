@@ -43,7 +43,11 @@ export default function InvoicesPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1800px]">
-      <PageHeader title="Invoices" description="Every completed sale, newest first." />
+      <PageHeader
+        title="Sales History"
+        description="Every sale you have made, newest first."
+        help="To reprint a receipt or return items, find the sale below and click it. You can search by receipt number or customer name, or pick dates."
+      />
       <Card>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-2">
@@ -52,21 +56,27 @@ export default function InvoicesPage() {
               <Input
                 value={search}
                 onChange={(e) => withReset(setSearch)(e.target.value)}
-                placeholder="Invoice # or customer…"
+                placeholder="Receipt number (e.g. INV-000123) or customer name…"
                 className="pl-9"
               />
             </div>
-            <Input type="date" value={dateFrom} onChange={(e) => withReset(setDateFrom)(e.target.value)} className="w-full sm:w-40" aria-label="From date" />
-            <Input type="date" value={dateTo} onChange={(e) => withReset(setDateTo)(e.target.value)} className="w-full sm:w-40" aria-label="To date" />
+            <label className="flex w-full flex-col gap-1 text-xs font-medium text-muted-foreground sm:w-44">
+              From date
+              <Input type="date" value={dateFrom} onChange={(e) => withReset(setDateFrom)(e.target.value)} />
+            </label>
+            <label className="flex w-full flex-col gap-1 text-xs font-medium text-muted-foreground sm:w-44">
+              To date
+              <Input type="date" value={dateTo} onChange={(e) => withReset(setDateTo)(e.target.value)} />
+            </label>
             <Select value={status} onValueChange={withReset(setStatus)}>
               <SelectTrigger className="w-full sm:w-48" aria-label="Status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All statuses</SelectItem>
+                <SelectItem value={ALL}>All sales</SelectItem>
                 <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="partially_returned">Partially returned</SelectItem>
-                <SelectItem value="returned">Returned</SelectItem>
+                <SelectItem value="partially_returned">Some items returned</SelectItem>
+                <SelectItem value="returned">Fully returned</SelectItem>
               </SelectContent>
             </Select>
             {hasFilters && (
@@ -90,17 +100,17 @@ export default function InvoicesPage() {
           ) : invoices.isLoading ? (
             <LoadingState rows={8} />
           ) : invoices.data?.results.length === 0 ? (
-            <EmptyState title="No invoices found" description={hasFilters ? "Try widening your filters." : "Completed sales will appear here."} />
+            <EmptyState title={hasFilters ? "No sales match your search" : "No sales yet"} description={hasFilters ? "Try a different name or number, or clear the dates." : "Sales will appear here after you complete one on the New Sale screen."} />
           ) : (
             <div className={cn(invoices.isPlaceholderData && "opacity-60")}>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Invoice</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Receipt no.</TableHead>
+                    <TableHead>Date &amp; time</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead className="text-right">Lines</TableHead>
-                    <TableHead>Payment</TableHead>
+                    <TableHead className="text-right">Items</TableHead>
+                    <TableHead>Paid by</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>

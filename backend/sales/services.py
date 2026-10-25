@@ -25,10 +25,14 @@ def money(value):
     return Decimal(value).quantize(CENT, rounding=ROUND_HALF_UP)
 
 
+PIECE, PACK = 'piece', 'pack'
+
+
 @dataclass
 class SaleLine:
     product_id: int
     quantity: int
+    unit: str = PIECE  # 'piece' (one tablet/capsule) or 'pack' (a whole box of pieces_per_pack)
 
 
 @dataclass
@@ -49,24 +53,33 @@ def _merge_lines(lines, key):
 def create_sale(*, user, lines, payment_method, amount_received=None, discount=ZERO, customer_name='', date=None):
     """Create an invoice and deduct stock using FEFO (first expiry, first out).
 
-    Prices come from the product record, never from the client. A product whose quantity spans several
-    batches yields one invoice line per batch so each unit stays traceable to its batch and cost.
+    Stock is counted in pieces. A line may sell loose pieces or whole boxes ('pack'); a box takes
+    pieces_per_pack pieces and is charged the product's box price. Prices come from the product record,
+    never from the client. Each line is split per batch so every piece stays traceable to its batch and cost.
     """
     if not lines:
         raise ValidationError({'items': ['Add at least one item to the sale.']})
 
-    requested = _merge_lines(lines, 'product_id')
+    # Merge duplicates per (product, unit), keeping first-seen order.
+    requested = OrderedDict()
+    for line in lines:
+        unit = line.unit if line.unit in (PIECE, PACK) else None
+        if unit is None:
+            raise ValidationError({'items': [f'Unknown sale unit "{line.unit}". Use piece or pack.']})
+        key = (line.product_id, unit)
+        requested[key] = requested.get(key, 0) + line.quantity
+    product_ids = list(dict.fromkeys(pid for pid, _ in requested))
     today = timezone.localdate()
 
-    products = Product.objects.in_bulk(list(requested))
-    missing = [pid for pid in requested if pid not in products]
+    products = Product.objects.in_bulk(product_ids)
+    missing = [pid for pid in product_ids if pid not in products]
     if missing:
         raise ValidationError({'items': [f'Unknown product id(s): {", ".join(map(str, missing))}.']})
 
     # Lock every candidate batch row up front, in a deterministic order, to avoid deadlocks.
     locked_batches = list(
         Batch.objects.select_for_update()
-        .filter(product_id__in=list(requested), quantity__gt=0)
+        .filter(product_id__in=product_ids, quantity__gt=0)
         .order_by('product_id', 'expiry_date', 'id')
     )
     sellable_by_product, expired_by_product = {}, {}
@@ -75,38 +88,55 @@ def create_sale(*, user, lines, payment_method, amount_received=None, discount=Z
         bucket.setdefault(batch.product_id, []).append(batch)
 
     errors = []
-    allocations = []  # (product, batch, qty)
-    for product_id, quantity in requested.items():
+    pieces_needed = OrderedDict()
+    for (product_id, unit), quantity in requested.items():
         product = products[product_id]
         if quantity <= 0:
             errors.append(f'{product.name}: quantity must be at least 1.')
-            continue
-        if not product.is_active:
+        elif not product.is_active:
             errors.append(f'{product.name} is inactive and cannot be sold.')
-            continue
+        else:
+            pieces_needed[product_id] = pieces_needed.get(product_id, 0) + quantity * _pieces_per(product, unit)
 
-        batches = sellable_by_product.get(product_id, [])
-        available = sum(b.quantity for b in batches)
-        if quantity > available:
+    for product_id, needed in pieces_needed.items():
+        product = products[product_id]
+        available = sum(b.quantity for b in sellable_by_product.get(product_id, []))
+        if needed > available:
             expired_qty = sum(b.quantity for b in expired_by_product.get(product_id, []))
-            message = f'{product.name}: only {available} in stock, {quantity} requested.'
+            message = f'{product.name}: only {_describe(product, available)} in stock, {_describe(product, needed)} requested.'
             if expired_qty:
-                message += f' {expired_qty} more unit(s) are expired and cannot be sold.'
+                message += f' {expired_qty} more piece(s) are expired and cannot be sold.'
             errors.append(message)
-            continue
-
-        remaining = quantity
-        for batch in batches:  # already FEFO-ordered
-            if remaining == 0:
-                break
-            take = min(batch.quantity, remaining)
-            allocations.append((product, batch, take))
-            remaining -= take
-
     if errors:
         raise ValidationError({'items': errors})
 
-    subtotal = money(sum(product.selling_price * qty for product, _, qty in allocations))
+    # Allocate each line's pieces FEFO, sharing the batch pool between a product's box and loose lines.
+    remaining = {b.pk: b.quantity for b in locked_batches}
+    allocations = []  # (product, batch, pieces, line_total, unit_price, unit, pack_size)
+    for (product_id, unit), quantity in requested.items():
+        product = products[product_id]
+        per = _pieces_per(product, unit)
+        pieces = quantity * per
+        line_total = money((product.effective_pack_price if unit == PACK else product.selling_price) * quantity)
+        unit_price = money(line_total / pieces)
+        chunks = []
+        left = pieces
+        for batch in sellable_by_product.get(product_id, []):
+            if left == 0:
+                break
+            take = min(remaining[batch.pk], left)
+            if take:
+                chunks.append((batch, take))
+                remaining[batch.pk] -= take
+                left -= take
+        # Split the exact line total across batches; the last chunk absorbs rounding.
+        assigned = ZERO
+        for i, (batch, take) in enumerate(chunks):
+            amount = line_total - assigned if i == len(chunks) - 1 else money(line_total * take / pieces)
+            assigned += amount
+            allocations.append((product, batch, take, amount, unit_price, unit if per > 1 else PIECE, per))
+
+    subtotal = money(sum(a[3] for a in allocations))
     discount = money(discount or ZERO)
     if discount < 0:
         raise ValidationError({'discount': ['Discount cannot be negative.']})
@@ -139,20 +169,38 @@ def create_sale(*, user, lines, payment_method, amount_received=None, discount=Z
     )
 
     items = []
-    for product, batch, qty in allocations:
+    for product, batch, pieces, amount, unit_price, unit, per in allocations:
         items.append(InvoiceItem(
             invoice=invoice,
             product=product,
             batch=batch,
-            quantity=qty,
-            unit_price=product.selling_price,
+            quantity=pieces,
+            unit_price=unit_price,
             unit_cost=batch.purchase_price,
-            line_total=money(product.selling_price * qty),
+            line_total=amount,
+            sale_unit=unit,
+            pack_size=per,
         ))
         # F() expression keeps the decrement correct at the SQL level as well.
-        Batch.objects.filter(pk=batch.pk).update(quantity=F('quantity') - qty)
+        Batch.objects.filter(pk=batch.pk).update(quantity=F('quantity') - pieces)
     InvoiceItem.objects.bulk_create(items)
     return invoice
+
+
+def _pieces_per(product, unit):
+    return product.pieces_per_pack if unit == PACK else 1
+
+
+def _describe(product, pieces):
+    """'25 pieces (2 boxes + 5)' for boxed medicines, plain count otherwise."""
+    per = product.pieces_per_pack
+    if per <= 1:
+        return str(pieces)
+    boxes, loose = divmod(pieces, per)
+    parts = [f'{boxes} box{"es" if boxes != 1 else ""}'] if boxes else []
+    if loose:
+        parts.append(f'{loose} loose')
+    return f'{pieces} pieces ({" + ".join(parts) or "0"})'
 
 
 @transaction.atomic
@@ -210,7 +258,7 @@ def create_return(*, user, invoice_id, lines, reason, date=None):
     refund_total = ZERO
     for item_id, quantity in requested.items():
         item = invoice_items[item_id]
-        refund = money(item.unit_price * quantity * paid_ratio)
+        refund = money(item.line_total * quantity / item.quantity * paid_ratio)
         refund_total += refund
         return_items.append(ReturnItem(
             return_obj=sales_return, invoice_item=item, quantity=quantity, refund_amount=refund,

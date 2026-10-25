@@ -38,6 +38,11 @@ export interface Product {
   category_name: string
   purchase_price: Money
   selling_price: Money
+  /** Pieces in one box. 1 = sold only as a whole unit. Stock and selling_price are per piece. */
+  pieces_per_pack: number
+  /** Box price if set; otherwise effective_pack_price = pieces × selling_price. */
+  pack_price: Money | null
+  effective_pack_price: Money
   reorder_level: number
   is_active: boolean
   stock: number
@@ -49,7 +54,7 @@ export interface Product {
 
 export type ProductInput = Pick<
   Product,
-  "name" | "sku" | "category" | "purchase_price" | "selling_price" | "reorder_level" | "is_active"
+  "name" | "sku" | "category" | "purchase_price" | "selling_price" | "reorder_level" | "is_active" | "pieces_per_pack" | "pack_price"
 >
 
 export type ExpiryStatus = "ok" | "expiring" | "expired"
@@ -81,6 +86,7 @@ export interface InventoryReport {
 }
 
 export type PaymentMethod = "cash" | "card"
+export type SaleUnit = "piece" | "pack"
 export type InvoiceStatus = "paid" | "partially_returned" | "returned"
 
 export interface InvoiceItem {
@@ -97,6 +103,9 @@ export interface InvoiceItem {
   line_total: Money
   returned_quantity: number
   returnable_quantity: number
+  /** quantity is in pieces; a "pack" line was sold as whole boxes of pack_size. */
+  sale_unit: SaleUnit
+  pack_size: number
 }
 
 export interface ReturnSummary {
@@ -130,7 +139,7 @@ export interface InvoiceDetail extends Invoice {
 }
 
 export interface SaleInput {
-  items: { product: number; quantity: number }[]
+  items: { product: number; quantity: number; unit: SaleUnit }[]
   discount: string
   payment_method: PaymentMethod
   amount_received?: string | null
@@ -220,4 +229,22 @@ export interface ImportResult {
     error_rows: number
   }
   rows: ImportRow[]
+}
+
+export interface ReceiveStockInput {
+  product?: number
+  new_product?: { name: string; sku?: string; category: string; reorder_level?: number }
+  quantity: number
+  expiry_date: string
+  batch_no?: string
+  total_cost?: string | null
+  selling_price?: string | null
+  pieces_per_pack?: number
+  pack_price?: string | null
+}
+
+export interface ReceiveStockResult {
+  created_product: boolean
+  product: Product
+  batch: Batch
 }

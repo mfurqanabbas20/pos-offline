@@ -17,11 +17,13 @@ class ProductSerializer(serializers.ModelSerializer):
     stock = serializers.IntegerField(read_only=True)
     sellable_stock = serializers.IntegerField(read_only=True)
     is_low_stock = serializers.SerializerMethodField()
+    effective_pack_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'sku', 'category', 'category_name', 'purchase_price', 'selling_price',
+            'pieces_per_pack', 'pack_price', 'effective_pack_price',
             'reorder_level', 'is_active', 'stock', 'sellable_stock', 'is_low_stock',
             'created_at', 'updated_at',
         ]
@@ -36,6 +38,10 @@ class ProductSerializer(serializers.ModelSerializer):
         selling = attrs.get('selling_price', getattr(self.instance, 'selling_price', None))
         if purchase is not None and selling is not None and selling < purchase:
             raise serializers.ValidationError({'selling_price': 'Selling price cannot be below purchase price.'})
+        per = attrs.get('pieces_per_pack', getattr(self.instance, 'pieces_per_pack', 1)) or 1
+        pack = attrs.get('pack_price', getattr(self.instance, 'pack_price', None))
+        if pack is not None and purchase is not None and pack < purchase * per:
+            raise serializers.ValidationError({'pack_price': 'The box price is lower than what the box costs you.'})
         return attrs
 
 

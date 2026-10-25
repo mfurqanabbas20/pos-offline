@@ -18,6 +18,7 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'product', 'product_name', 'product_sku', 'batch', 'batch_no', 'expiry_date',
             'quantity', 'unit_price', 'unit_cost', 'line_total', 'returned_quantity', 'returnable_quantity',
+            'sale_unit', 'pack_size',
         ]
 
 
@@ -83,6 +84,7 @@ class ReturnSerializer(serializers.ModelSerializer):
 class SaleLineInputSerializer(serializers.Serializer):
     product = serializers.IntegerField(min_value=1)
     quantity = serializers.IntegerField(min_value=1, max_value=100000)
+    unit = serializers.ChoiceField(choices=['piece', 'pack'], default='piece')
 
 
 class SaleInputSerializer(serializers.Serializer):

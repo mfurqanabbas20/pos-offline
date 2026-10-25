@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, ChevronLeft, ChevronRight, Inbox, Loader2 } from "lucide-react"
+import { AlertCircle, ChevronLeft, ChevronRight, Inbox, Lightbulb, Loader2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,18 +12,34 @@ export function PageHeader({
   title,
   description,
   actions,
+  help,
 }: {
   title: string
   description?: string
   actions?: React.ReactNode
+  /** Short "how this page works" guidance for first-time users. */
+  help?: React.ReactNode
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    <div className="mb-6 space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+          {description && <p className="mt-1.5 text-base text-muted-foreground">{description}</p>}
+        </div>
+        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {help && <HelpTip>{help}</HelpTip>}
+    </div>
+  )
+}
+
+/** A calm teal tip box: tells a first-time user what to do on this screen. */
+export function HelpTip({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex items-start gap-3 rounded-xl border border-primary/20 bg-accent/60 px-4 py-3 text-[0.95rem] text-accent-foreground", className)}>
+      <Lightbulb className="mt-0.5 size-5 shrink-0" />
+      <div className="leading-relaxed">{children}</div>
     </div>
   )
 }
@@ -46,10 +62,12 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   const message = error instanceof Error ? error.message : "Something went wrong."
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center">
-      <AlertCircle className="size-6 text-destructive" />
-      <p className="text-sm text-destructive">{message}</p>
+      <AlertCircle className="size-8 text-destructive" />
+      <p className="text-lg font-medium text-destructive">Sorry, this could not be loaded</p>
+      <p className="text-destructive">{message}</p>
+      <p className="text-sm text-muted-foreground">Check the internet or server connection, then press Try again.</p>
       {onRetry && (
-        <Button variant="outline" onClick={onRetry}>
+        <Button size="lg" onClick={onRetry}>
           Try again
         </Button>
       )}
@@ -57,13 +75,25 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   )
 }
 
-export function EmptyState({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
+export function EmptyState({
+  title,
+  description,
+  action,
+  icon: Icon = Inbox,
+}: {
+  title: string
+  description?: string
+  action?: React.ReactNode
+  icon?: React.ComponentType<{ className?: string }>
+}) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-10 text-center">
-      <Inbox className="size-6 text-muted-foreground" />
-      <p className="font-medium">{title}</p>
-      {description && <p className="text-sm text-muted-foreground">{description}</p>}
-      {action && <div className="mt-2">{action}</div>}
+      <span className="mb-1 flex size-14 items-center justify-center rounded-2xl bg-muted">
+        <Icon className="size-7 text-muted-foreground" />
+      </span>
+      <p className="text-lg font-medium">{title}</p>
+      {description && <p className="max-w-md text-muted-foreground">{description}</p>}
+      {action && <div className="mt-3 flex flex-wrap justify-center gap-2">{action}</div>}
     </div>
   )
 }
@@ -84,19 +114,19 @@ export function Pagination({
   const from = (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, count)
   return (
-    <div className="flex items-center justify-between gap-4 pt-4 text-sm text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-4 pt-4 text-muted-foreground">
       <span>
-        {from}–{to} of {count}
+        Showing {from}–{to} of {count}
       </span>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" disabled={page <= 1} onClick={() => onPageChange(page - 1)} aria-label="Previous page">
-          <ChevronLeft />
+        <Button variant="outline" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          <ChevronLeft /> Previous
         </Button>
-        <span className="min-w-16 text-center">
-          {page} / {pages}
+        <span className="min-w-24 text-center">
+          Page {page} of {pages}
         </span>
-        <Button variant="outline" size="icon" disabled={page >= pages} onClick={() => onPageChange(page + 1)} aria-label="Next page">
-          <ChevronRight />
+        <Button variant="outline" disabled={page >= pages} onClick={() => onPageChange(page + 1)}>
+          Next <ChevronRight />
         </Button>
       </div>
     </div>
@@ -111,7 +141,13 @@ const EXPIRY_STYLES: Record<ExpiryStatus, string> = {
 
 export function ExpiryBadge({ status, days }: { status: ExpiryStatus; days: number }) {
   const label =
-    status === "expired" ? `Expired ${Math.abs(days)}d ago` : status === "expiring" ? `${days}d left` : "OK"
+    status === "expired"
+      ? `Expired ${plural(Math.abs(days), "day")} ago`
+      : status === "expiring"
+        ? days === 0
+          ? "Expires today"
+          : `Expires in ${plural(days, "day")}`
+        : "Good"
   return (
     <Badge variant="outline" className={EXPIRY_STYLES[status]}>
       {label}
@@ -122,15 +158,15 @@ export function ExpiryBadge({ status, days }: { status: ExpiryStatus; days: numb
 export function LowStockBadge() {
   return (
     <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
-      Low stock
+      Running low
     </Badge>
   )
 }
 
 const STATUS_STYLES: Record<InvoiceStatus, { label: string; className: string }> = {
   paid: { label: "Paid", className: "border-primary/20 bg-accent text-accent-foreground" },
-  partially_returned: { label: "Partially returned", className: "border-amber-200 bg-amber-50 text-amber-700" },
-  returned: { label: "Returned", className: "border-slate-200 bg-slate-100 text-slate-600" },
+  partially_returned: { label: "Some items returned", className: "border-amber-200 bg-amber-50 text-amber-700" },
+  returned: { label: "Fully returned", className: "border-slate-200 bg-slate-100 text-slate-600" },
 }
 
 export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
@@ -140,4 +176,9 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
       {style.label}
     </Badge>
   )
+}
+
+/** "1 day", "3 days" */
+export function plural(n: number, word: string) {
+  return `${n} ${word}${n === 1 ? "" : "s"}`
 }

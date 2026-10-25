@@ -73,6 +73,9 @@ class InvoiceItem(models.Model):
     unit_price = models.DecimalField(**MONEY)
     unit_cost = models.DecimalField(**MONEY, help_text='Batch purchase price at the time of sale.')
     line_total = models.DecimalField(**MONEY)
+    # How it was sold. quantity/unit_price are always per piece; a box sale records its box size for display.
+    sale_unit = models.CharField(max_length=5, choices=[('piece', 'Piece'), ('pack', 'Box')], default='piece')
+    pack_size = models.PositiveIntegerField(default=1)
 
     class Meta:
         ordering = ['id']

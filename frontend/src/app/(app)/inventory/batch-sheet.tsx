@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatMoney } from "@/lib/format"
 import { useProducts, useSaveBatch } from "@/lib/queries"
-import type { Batch } from "@/lib/types"
+import type { Batch, Product } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const schema = z.object({
@@ -33,29 +33,34 @@ export function BatchSheet({
   open,
   onOpenChange,
   batch,
+  product,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   batch?: Batch | null
+  /** Pre-select this medicine when adding new stock. */
+  product?: Product | null
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>{batch ? "Edit batch" : "Receive stock"}</SheetTitle>
-          <SheetDescription>Each delivery is tracked as a batch with its own expiry and cost.</SheetDescription>
+          <SheetTitle className="text-xl">{batch ? "Edit stock" : "Add stock (new delivery)"}</SheetTitle>
+          <SheetDescription>{batch ? "Correct the details, or lower the quantity to remove damaged or expired items." : "Do this every time medicines arrive. Each delivery is saved separately with its own expiry date."}</SheetDescription>
         </SheetHeader>
         {/* Mounted only while open, so the form starts fresh every time. */}
-        <BatchForm batch={batch} onDone={() => onOpenChange(false)} />
+        <BatchForm batch={batch} product={product} onDone={() => onOpenChange(false)} />
       </SheetContent>
     </Sheet>
   )
 }
 
-function BatchForm({ batch, onDone }: { batch?: Batch | null; onDone: () => void }) {
+function BatchForm({ batch, product, onDone }: { batch?: Batch | null; product?: Product | null; onDone: () => void }) {
   const save = useSaveBatch()
   const [search, setSearch] = useState("")
-  const [productLabel, setProductLabel] = useState(batch ? `${batch.product_name} (${batch.product_sku})` : "")
+  const [productLabel, setProductLabel] = useState(
+    batch ? `${batch.product_name} (${batch.product_sku})` : product ? `${product.name} (${product.sku})` : "",
+  )
   const debounced = useDebounce(search.trim(), 200)
   const products = useProducts({ search: debounced, page_size: 6, ordering: "name" }, !batch)
 
@@ -69,7 +74,9 @@ function BatchForm({ batch, onDone }: { batch?: Batch | null; onDone: () => void
           quantity: String(batch.quantity),
           purchase_price: batch.purchase_price,
         }
-      : { batch_no: "", expiry_date: "", quantity: "", purchase_price: "" },
+      : product
+        ? { product: product.id, batch_no: "", expiry_date: "", quantity: "", purchase_price: product.purchase_price }
+        : { batch_no: "", expiry_date: "", quantity: "", purchase_price: "" },
   })
   const { errors } = formState
   const selectedProduct = useWatch({ control, name: "product" })
@@ -88,7 +95,7 @@ function BatchForm({ batch, onDone }: { batch?: Batch | null; onDone: () => void
   return (
     <>
       <form id="batch-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-4" noValidate>
-        <FormField id="product-search" label="Product" error={errors.product?.message}>
+        <FormField id="product-search" label="Which medicine?" error={errors.product?.message}>
           {batch ? (
             <p className="flex h-10 items-center rounded-lg border bg-muted/50 px-3 text-sm">{productLabel}</p>
           ) : (
@@ -99,7 +106,7 @@ function BatchForm({ batch, onDone }: { batch?: Batch | null; onDone: () => void
                   id="product-search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder={productLabel || "Search name or SKU…"}
+                  placeholder={productLabel || "Type the medicine name…"}
                   className="pl-9"
                 />
               </div>
@@ -134,18 +141,18 @@ function BatchForm({ batch, onDone }: { batch?: Batch | null; onDone: () => void
           )}
         </FormField>
         <div className="grid grid-cols-2 gap-3">
-          <FormField id="batch_no" label="Batch no." error={errors.batch_no?.message}>
+          <FormField id="batch_no" label="Batch number" hint="Printed on the box (Batch / Lot)" error={errors.batch_no?.message}>
             <Input id="batch_no" aria-invalid={!!errors.batch_no} {...register("batch_no")} />
           </FormField>
-          <FormField id="expiry_date" label="Expiry date" error={errors.expiry_date?.message}>
+          <FormField id="expiry_date" label="Expiry date" hint="Printed on the box (EXP)" error={errors.expiry_date?.message}>
             <Input id="expiry_date" type="date" aria-invalid={!!errors.expiry_date} {...register("expiry_date")} />
           </FormField>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <FormField id="quantity" label="Quantity" error={errors.quantity?.message}>
+          <FormField id="quantity" label="How many arrived?" hint="Count in the unit you sell, e.g. tablets" error={errors.quantity?.message}>
             <Input id="quantity" inputMode="numeric" aria-invalid={!!errors.quantity} {...register("quantity")} />
           </FormField>
-          <FormField id="purchase_price" label="Unit cost" error={errors.purchase_price?.message}>
+          <FormField id="purchase_price" label="Cost of one (Rs)" hint="What you paid for one unit" error={errors.purchase_price?.message}>
             <Input id="purchase_price" inputMode="decimal" aria-invalid={!!errors.purchase_price} {...register("purchase_price")} />
           </FormField>
         </div>
@@ -156,7 +163,7 @@ function BatchForm({ batch, onDone }: { batch?: Batch | null; onDone: () => void
         </Button>
         <Button type="submit" form="batch-form" disabled={save.isPending}>
           {save.isPending && <Spinner />}
-          {batch ? "Save changes" : "Add batch"}
+          {batch ? "Save changes" : "Save stock"}
         </Button>
       </SheetFooter>
     </>

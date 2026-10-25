@@ -39,7 +39,7 @@ class SaleCreateView(APIView):
         data = payload.validated_data
         invoice = services.create_sale(
             user=request.user,
-            lines=[services.SaleLine(product_id=i['product'], quantity=i['quantity']) for i in data['items']],
+            lines=[services.SaleLine(product_id=i['product'], quantity=i['quantity'], unit=i['unit']) for i in data['items']],
             payment_method=data['payment_method'],
             amount_received=data.get('amount_received'),
             discount=data['discount'],

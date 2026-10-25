@@ -117,10 +117,65 @@ class InventoryImportTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         wb = load_workbook(io.BytesIO(response.content))
         self.assertEqual(wb.active['A1'].value, 'SKU / Barcode *')
-        self.assertEqual(wb.active['B2'].value, 'Panadol 500mg Capsule')
+        self.assertEqual(wb.active['B2'].value, 'Panadol 500mg Tablet')
+        self.assertEqual(wb.active['G1'].value, 'Pieces per box')
 
     def test_existing_batch_from_other_product_does_not_clash(self):
         other = make_product(sku='OTHER')
         make_batch(other, 5, expires_in_days=100, batch_no='PN2401')
         response = self.upload(xlsx(PANADOL), commit=True)
         self.assertEqual(response.status_code, 200, response.data)
+
+
+class ReceiveStockTests(APITestCase):
+    def setUp(self):
+        self.client.force_authenticate(make_user())
+        from datetime import timedelta
+
+        from django.utils import timezone
+        self.expiry = (timezone.localdate() + timedelta(days=400)).isoformat()
+
+    def receive(self, **body):
+        return self.client.post('/api/inventory/receive/', {'quantity': 50, 'expiry_date': self.expiry, **body}, format='json')
+
+    def test_new_medicine_with_total_cost_auto_codes(self):
+        response = self.receive(
+            new_product={'name': 'Panadol 500mg Tablet', 'category': 'Pain relief'}, total_cost='300', selling_price='8',
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(response.data['created_product'])
+        product = Product.objects.get()
+        self.assertTrue(product.sku.startswith('MED-'))
+        self.assertEqual((product.purchase_price, product.selling_price), (Decimal('6.00'), Decimal('8.00')))
+        batch = product.batches.get()
+        self.assertEqual(batch.quantity, 50)
+        self.assertTrue(batch.batch_no.startswith('EXP'))
+        self.assertEqual(response.data['product']['stock'], 50)
+
+    def test_existing_medicine_reuses_last_cost_and_price(self):
+        product = make_product(selling_price='8.00', purchase_price='6.00')
+        response = self.receive(product=product.pk, quantity=20)
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertFalse(response.data['created_product'])
+        self.assertEqual(product.batches.get().purchase_price, Decimal('6.00'))
+
+    def test_two_deliveries_same_expiry_get_distinct_batch_numbers(self):
+        product = make_product()
+        first = self.receive(product=product.pk).data['batch']['batch_no']
+        second = self.receive(product=product.pk).data['batch']['batch_no']
+        self.assertNotEqual(first, second)
+
+    def test_duplicate_name_is_blocked(self):
+        make_product(name='Brufen 400mg Tablet')
+        response = self.receive(new_product={'name': 'brufen 400MG tablet', 'category': 'X'}, total_cost='100', selling_price='5')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('already in your list', response.data['error']['message'])
+        self.assertEqual(Product.objects.count(), 1)
+
+    def test_selling_below_cost_and_past_expiry_rejected(self):
+        loss = self.receive(new_product={'name': 'A', 'category': 'X'}, total_cost='500', selling_price='5')
+        self.assertIn('lose money', loss.data['error']['message'])
+        past = self.client.post('/api/inventory/receive/', {
+            'product': make_product().pk, 'quantity': 1, 'expiry_date': '2020-01-31'}, format='json')
+        self.assertIn('already passed', past.data['error']['message'])
+        self.assertFalse(Batch.objects.exists())

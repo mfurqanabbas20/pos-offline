@@ -46,7 +46,7 @@ export function NewReturnFlow() {
           <ArrowLeft /> Returns
         </Link>
       </Button>
-      <PageHeader title="New return" description="Find the invoice, choose what’s coming back, and confirm the refund." />
+      <PageHeader title="Return items" description="Three steps: find the receipt, choose what is coming back, then give the refund." />
       {invoiceId ? (
         <ReturnForm
           invoiceId={invoiceId}
@@ -70,20 +70,20 @@ function FindInvoice({ onSelect }: { onSelect: (id: number) => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>1. Find the invoice</CardTitle>
-        <CardDescription>Search by invoice number (e.g. INV-000123) or customer name.</CardDescription>
+        <CardTitle className="text-xl">Step 1: Find the customer’s receipt</CardTitle>
+        <CardDescription>Type the number printed on their receipt (e.g. INV-000123), or the customer’s name. Then click the right sale.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground" />
-          <Input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Invoice # or customer…" className="h-12 pl-12 text-base" />
+          <Input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Receipt number or customer name…" className="h-12 pl-12 text-base" />
         </div>
         {invoices.isError ? (
           <ErrorState error={invoices.error} onRetry={() => invoices.refetch()} />
         ) : invoices.isLoading ? (
           <LoadingState rows={4} />
         ) : invoices.data?.results.length === 0 ? (
-          <EmptyState title="No matching invoices" />
+          <EmptyState title="No sale found" description="Check the receipt number or the customer’s name and try again." />
         ) : (
           <ul className="divide-y rounded-xl border">
             {invoices.data?.results.map((invoice) => {
@@ -195,11 +195,11 @@ function ReturnForm({ invoiceId, onChangeInvoice }: { invoiceId: number; onChang
             </CardDescription>
           </div>
           <Button type="button" variant="outline" onClick={onChangeInvoice}>
-            Change invoice
+            Pick a different receipt
           </Button>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p className="text-sm font-medium">2. Select items and quantities</p>
+          <p className="text-lg font-medium">Step 2: How many of each item is coming back?</p>
           {data.items.map((item) => {
             const qty = quantities[String(item.id)] ?? 0
             const max = item.returnable_quantity
@@ -211,10 +211,11 @@ function ReturnForm({ invoiceId, onChangeInvoice }: { invoiceId: number; onChang
                 <div className="min-w-48 flex-1">
                   <p className="font-medium">{item.product_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Batch {item.batch_no} · exp {formatDate(item.expiry_date)} · {formatMoney(item.unit_price)} each
+                    Batch {item.batch_no} · exp {formatDate(item.expiry_date)} · {formatMoney(item.unit_price)} a piece
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Sold {item.quantity}
+                    Sold {item.quantity} {item.quantity === 1 ? "piece" : "pieces"}
+                    {item.sale_unit === "pack" && ` (as boxes of ${item.pack_size})`}
                     {item.returned_quantity > 0 && ` · already returned ${item.returned_quantity}`} · <strong>{max} returnable</strong>
                   </p>
                 </div>
@@ -246,7 +247,7 @@ function ReturnForm({ invoiceId, onChangeInvoice }: { invoiceId: number; onChang
 
       <Card>
         <CardContent className="space-y-3">
-          <Label htmlFor="reason">3. Reason</Label>
+          <Label htmlFor="reason" className="text-lg">Step 3: Why is it being returned?</Label>
           <div className="flex flex-wrap gap-2">
             {REASONS.map((r) => (
               <Button
@@ -259,33 +260,33 @@ function ReturnForm({ invoiceId, onChangeInvoice }: { invoiceId: number; onChang
               </Button>
             ))}
           </div>
-          <Textarea id="reason" rows={2} placeholder="Or describe the reason…" aria-invalid={!!formState.errors.reason} {...register("reason")} />
+          <Textarea id="reason" rows={2} placeholder="Or type the reason in your own words…" aria-invalid={!!formState.errors.reason} {...register("reason")} />
           {formState.errors.reason && <p className="text-sm text-destructive">{formState.errors.reason.message}</p>}
         </CardContent>
       </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-card p-4">
         <div>
-          <p className="text-sm text-muted-foreground">Refund to customer</p>
+          <p className="text-muted-foreground">Give back to the customer</p>
           <p className="text-2xl font-semibold tabular-nums">{formatMoney(refundEstimate)}</p>
           {paidRatio < 1 && <p className="text-xs text-muted-foreground">Adjusted for the invoice discount</p>}
         </div>
         <Button type="submit" size="lg" className="min-w-48">
-          Review return
+          Continue
         </Button>
       </div>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm return</AlertDialogTitle>
+            <AlertDialogTitle>Is this correct?</AlertDialogTitle>
             <AlertDialogDescription>
               {totalUnits} unit(s) from {data.number} will be restocked to their original batches and{" "}
               <strong>{formatMoney(refundEstimate)}</strong> refunded. This can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={createReturn.isPending}>Back</AlertDialogCancel>
+            <AlertDialogCancel disabled={createReturn.isPending}>No, go back</AlertDialogCancel>
             <AlertDialogAction
               disabled={createReturn.isPending}
               onClick={(e) => {
@@ -294,7 +295,7 @@ function ReturnForm({ invoiceId, onChangeInvoice }: { invoiceId: number; onChang
               }}
             >
               {createReturn.isPending && <Spinner />}
-              Confirm return
+              Yes, complete the return
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

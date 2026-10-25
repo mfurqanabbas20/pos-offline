@@ -28,19 +28,19 @@ export function InvoiceDetailView() {
         </Link>
       </Button>
       <PageHeader
-        title={data.number}
-        description={formatDateTime(data.date)}
+        title={`Receipt ${data.number}`}
+        description={`Sold on ${formatDateTime(data.date)}`}
         actions={
           <>
             <Button asChild variant="outline" size="lg">
               <Link href={`/receipt/${data.id}?print=1`}>
-                <Printer /> Print receipt
+                <Printer /> Print receipt again
               </Link>
             </Button>
             {canReturn && (
               <Button asChild size="lg">
                 <Link href={`/returns/new?invoice=${data.id}`}>
-                  <Undo2 /> Return items
+                  <Undo2 /> Customer is returning items
                 </Link>
               </Button>
             )}
@@ -51,15 +51,15 @@ export function InvoiceDetailView() {
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader>
-            <CardTitle>Items</CardTitle>
+            <CardTitle>What was sold</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Batch</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead>Medicine</TableHead>
+                  <TableHead>Batch &amp; expiry</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
@@ -69,7 +69,14 @@ export function InvoiceDetailView() {
                   <TableRow key={item.id} className="h-14">
                     <TableCell>
                       <p className="font-medium">{item.product_name}</p>
-                      <p className="text-xs text-muted-foreground">{item.product_sku}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.sale_unit === "pack" && (
+                          <span className="mr-1.5 rounded bg-accent px-1.5 py-0.5 font-medium text-accent-foreground">
+                            Sold as box of {item.pack_size}
+                          </span>
+                        )}
+                        {item.product_sku}
+                      </p>
                     </TableCell>
                     <TableCell>
                       <p className="font-mono text-xs">{item.batch_no}</p>
@@ -93,20 +100,20 @@ export function InvoiceDetailView() {
         <div className="grid content-start gap-6 md:grid-cols-2 xl:grid-cols-1">
           <Card>
             <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Summary</CardTitle>
+              <CardTitle>Payment</CardTitle>
               <InvoiceStatusBadge status={data.status} />
             </CardHeader>
             <CardContent>
               <dl className="space-y-2 text-sm">
                 <Line label="Customer" value={data.customer_name || "Walk-in"} />
-                <Line label="Cashier" value={data.created_by_name} />
-                <Line label="Payment" value={<span className="capitalize">{data.payment_method}</span>} />
+                <Line label="Sold by" value={data.created_by_name} />
+                <Line label="Paid by" value={<span className="capitalize">{data.payment_method}</span>} />
                 <div className="my-3 border-t" />
                 <Line label="Subtotal" value={formatMoney(data.subtotal)} />
                 {Number(data.discount) > 0 && <Line label="Discount" value={`− ${formatMoney(data.discount)}`} />}
                 <Line label="Total" value={formatMoney(data.total)} strong />
-                <Line label="Received" value={formatMoney(data.amount_received)} />
-                <Line label="Change" value={formatMoney(data.change_due)} />
+                <Line label="Customer gave" value={formatMoney(data.amount_received)} />
+                <Line label="Change given" value={formatMoney(data.change_due)} />
               </dl>
             </CardContent>
           </Card>
@@ -114,7 +121,7 @@ export function InvoiceDetailView() {
           {data.returns.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Returns</CardTitle>
+                <CardTitle>Items returned later</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="divide-y text-sm">

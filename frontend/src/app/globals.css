@@ -96,6 +96,8 @@
   }
   html {
     @apply font-sans;
+    /* Slightly larger than the 16px default for easier reading at the counter; everything scales with it. */
+    font-size: 106.25%;
   }
 }
 /* ---------- Receipt printing (80mm thermal) ---------- */

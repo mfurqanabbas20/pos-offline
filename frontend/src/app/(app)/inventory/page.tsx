@@ -1,6 +1,7 @@
 "use client"
 
-import { FileSpreadsheet, PackagePlus, Pencil, Plus, Search } from "lucide-react"
+import { FileSpreadsheet, PackagePlus, Pencil, Search } from "lucide-react"
+import Link from "next/link"
 import { useState } from "react"
 
 import { EmptyState, ErrorState, ExpiryBadge, LoadingState, LowStockBadge, PageHeader, Pagination } from "@/components/common"
@@ -27,24 +28,30 @@ const ALL = "all"
 export default function InventoryPage() {
   const [tab, setTab] = useState("batches")
   const [productSheet, setProductSheet] = useState<{ open: boolean; product?: Product | null }>({ open: false })
-  const [batchSheet, setBatchSheet] = useState<{ open: boolean; batch?: Batch | null }>({ open: false })
+  const [batchSheet, setBatchSheet] = useState<{ open: boolean; batch?: Batch | null; product?: Product | null }>({ open: false })
   const [importOpen, setImportOpen] = useState(false)
 
   return (
     <div className="mx-auto w-full max-w-[1800px]">
       <PageHeader
-        title="Inventory"
-        description="Stock is tracked per batch. Products sell from the earliest-expiring batch first."
+        title="Medicines & Stock"
+        description="Everything you sell, how many you have, and when it expires."
+        help={
+          <>
+            <strong>Medicines arrived?</strong> Press <strong>“Add stock”</strong> and follow the 4 easy steps. It works for
+            new medicines and ones you already have. The oldest stock (earliest expiry) is always sold first,
+            automatically.
+          </>
+        }
         actions={
           <>
             <Button variant="outline" onClick={() => setImportOpen(true)}>
-              <FileSpreadsheet /> Import Excel
+              <FileSpreadsheet /> Add many from Excel
             </Button>
-            <Button variant="outline" onClick={() => setProductSheet({ open: true, product: null })}>
-              <Plus /> Add product
-            </Button>
-            <Button onClick={() => setBatchSheet({ open: true, batch: null })}>
-              <PackagePlus /> Receive stock
+            <Button asChild size="lg">
+              <Link href="/inventory/add">
+                <PackagePlus /> Add stock
+              </Link>
             </Button>
           </>
         }
@@ -53,10 +60,10 @@ export default function InventoryPage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="batches" className="px-4">
-            Stock by batch
+            Stock on the shelf
           </TabsTrigger>
           <TabsTrigger value="products" className="px-4">
-            Products
+            Medicines list
           </TabsTrigger>
         </TabsList>
         <TabsContent value="batches">
@@ -67,8 +74,18 @@ export default function InventoryPage() {
         </TabsContent>
       </Tabs>
 
-      <ProductSheet open={productSheet.open} product={productSheet.product} onOpenChange={(open) => setProductSheet((s) => ({ ...s, open }))} />
-      <BatchSheet open={batchSheet.open} batch={batchSheet.batch} onOpenChange={(open) => setBatchSheet((s) => ({ ...s, open }))} />
+      <ProductSheet
+        open={productSheet.open}
+        product={productSheet.product}
+        onOpenChange={(open) => setProductSheet((s) => ({ ...s, open }))}
+        onCreated={(product) => setBatchSheet({ open: true, batch: null, product })}
+      />
+      <BatchSheet
+        open={batchSheet.open}
+        batch={batchSheet.batch}
+        product={batchSheet.product}
+        onOpenChange={(open) => setBatchSheet((s) => ({ ...s, open }))}
+      />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   )
@@ -82,7 +99,7 @@ function CategoryFilter({ value, onChange }: { value: string; onChange: (v: stri
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={ALL}>All categories</SelectItem>
+        <SelectItem value={ALL}>All types</SelectItem>
         {categories.data?.map((c) => (
           <SelectItem key={c.id} value={String(c.id)}>
             {c.name}
@@ -128,16 +145,16 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
     <Card>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <SearchBox value={search} onChange={resetPage(setSearch)} placeholder="Search product, SKU or batch…" />
+          <SearchBox value={search} onChange={resetPage(setSearch)} placeholder="Search medicine name, code or batch…" />
           <CategoryFilter value={category} onChange={resetPage(setCategory)} />
           <Select value={expiry} onValueChange={resetPage(setExpiry)}>
             <SelectTrigger className="w-full sm:w-44" aria-label="Expiry">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Any expiry</SelectItem>
-              <SelectItem value="ok">OK</SelectItem>
-              <SelectItem value="expiring">Expiring ≤ 90 days</SelectItem>
+              <SelectItem value={ALL}>All expiry dates</SelectItem>
+              <SelectItem value="ok">Good (not expiring soon)</SelectItem>
+              <SelectItem value="expiring">Expiring within 90 days</SelectItem>
               <SelectItem value="expired">Expired</SelectItem>
             </SelectContent>
           </Select>
@@ -146,9 +163,9 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="in">In stock</SelectItem>
-              <SelectItem value="empty">Empty batches</SelectItem>
-              <SelectItem value={ALL}>All batches</SelectItem>
+              <SelectItem value="in">With stock left</SelectItem>
+              <SelectItem value="empty">Used up</SelectItem>
+              <SelectItem value={ALL}>Everything</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -158,19 +175,19 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
         ) : batches.isLoading ? (
           <LoadingState rows={8} />
         ) : batches.data?.results.length === 0 ? (
-          <EmptyState title="No batches found" description="Try different filters, or receive new stock." />
+          <EmptyState title="Nothing to show" description="No stock matches. Change the search or filters above, or press “Add stock” when medicines arrive." />
         ) : (
           <div className={cn(batches.isPlaceholderData && "opacity-60")}>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Batch</TableHead>
+                  <TableHead>Medicine</TableHead>
+                  <TableHead>Batch no.</TableHead>
                   <TableHead>Expiry</TableHead>
                   <TableHead className="hidden xl:table-cell text-right">Cost</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Batch qty</TableHead>
-                  <TableHead className="text-right">Product stock</TableHead>
+                  <TableHead className="text-right">Sale price</TableHead>
+                  <TableHead className="text-right">In this delivery</TableHead>
+                  <TableHead className="text-right">Total in stock</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -200,8 +217,8 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => onEdit(b)} aria-label={`Edit batch ${b.batch_no}`}>
-                          <Pencil />
+                        <Button variant="outline" size="sm" onClick={() => onEdit(b)} aria-label={`Edit batch ${b.batch_no}`}>
+                          <Pencil /> Edit
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -241,17 +258,17 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
     <Card>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <SearchBox value={search} onChange={resetPage(setSearch)} placeholder="Search name, SKU or category…" />
+          <SearchBox value={search} onChange={resetPage(setSearch)} placeholder="Search medicine name, code or type…" />
           <CategoryFilter value={category} onChange={resetPage(setCategory)} />
           <Select value={status} onValueChange={resetPage(setStatus)}>
             <SelectTrigger className="w-full sm:w-40" aria-label="Status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All products</SelectItem>
-              <SelectItem value="low">Low stock</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value={ALL}>All medicines</SelectItem>
+              <SelectItem value="low">Running low</SelectItem>
+              <SelectItem value="active">Available for sale</SelectItem>
+              <SelectItem value="inactive">Hidden from sale</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -261,18 +278,18 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
         ) : products.isLoading ? (
           <LoadingState rows={8} />
         ) : products.data?.results.length === 0 ? (
-          <EmptyState title="No products found" />
+          <EmptyState title="No medicines found" description="Change the search or filters above, or press “Add stock” to add a medicine." />
         ) : (
           <div className={cn(products.isPlaceholderData && "opacity-60")}>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>Medicine</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead className="hidden xl:table-cell text-right">Cost</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Sellable stock</TableHead>
-                  <TableHead className="hidden xl:table-cell text-right">Reorder at</TableHead>
+                  <TableHead className="text-right">Sale price</TableHead>
+                  <TableHead className="text-right">In stock</TableHead>
+                  <TableHead className="hidden xl:table-cell text-right">Warn at</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -290,13 +307,13 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
                     <TableCell className="text-right font-medium tabular-nums">
                       {p.sellable_stock}
                       {p.stock !== p.sellable_stock && (
-                        <span className="block text-xs font-normal text-red-700">+{p.stock - p.sellable_stock} expired</span>
+                        <span className="block text-xs font-normal text-red-700">+{p.stock - p.sellable_stock} expired (can’t sell)</span>
                       )}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell text-right tabular-nums text-muted-foreground">{p.reorder_level}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {!p.is_active && <Badge variant="secondary">Inactive</Badge>}
+                        {!p.is_active && <Badge variant="secondary">Hidden from sale</Badge>}
                         {p.is_low_stock && <LowStockBadge />}
                         {p.is_active && !p.is_low_stock && (
                           <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
@@ -306,9 +323,16 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => onEdit(p)} aria-label={`Edit ${p.name}`}>
-                        <Pencil />
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button asChild size="sm">
+                          <Link href={`/inventory/add?product=${p.id}`} aria-label={`Add stock of ${p.name}`}>
+                            <PackagePlus /> Add stock
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => onEdit(p)} aria-label={`Edit ${p.name}`}>
+                          <Pencil /> Edit
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

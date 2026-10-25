@@ -194,3 +194,65 @@ class ReturnTests(TestCase):
         ]
         self.assertEqual(refunds[0], Decimal('2.67'))
         self.assertEqual(sum(refunds), invoice.total)
+
+
+class PackSaleTests(TestCase):
+    """A box of 10 capsules: sell whole boxes or loose capsules from the same stock."""
+
+    def setUp(self):
+        self.user = make_user()
+        self.product = make_product(selling_price='30.00', purchase_price='20.00')
+        self.product.pieces_per_pack = 10
+        self.product.pack_price = Decimal('280.00')  # box discount: 10 x 30 would be 300
+        self.product.save()
+        self.early = make_batch(self.product, 15, expires_in_days=30, purchase_price='20.00')
+        self.late = make_batch(self.product, 30, expires_in_days=300, purchase_price='20.00')
+
+    def sell(self, *lines, **kwargs):
+        return services.create_sale(
+            user=self.user, payment_method='card',
+            lines=[SaleLine(product_id=self.product.pk, quantity=q, unit=u) for q, u in lines], **kwargs,
+        )
+
+    def test_box_sale_takes_ten_pieces_at_box_price(self):
+        invoice = self.sell((1, 'pack'))
+        self.assertEqual(invoice.total, Decimal('280.00'))
+        item = invoice.items.get()
+        self.assertEqual((item.quantity, item.sale_unit, item.pack_size), (10, 'pack', 10))
+        self.early.refresh_from_db()
+        self.assertEqual(self.early.quantity, 5)
+
+    def test_loose_pieces_use_piece_price(self):
+        invoice = self.sell((3, 'piece'))
+        self.assertEqual(invoice.total, Decimal('90.00'))
+        self.assertEqual(invoice.items.get().sale_unit, 'piece')
+
+    def test_box_spanning_two_batches_keeps_exact_total(self):
+        invoice = self.sell((2, 'pack'))  # 20 pieces: 15 from early batch, 5 from late
+        items = list(invoice.items.order_by('id'))
+        self.assertEqual([i.quantity for i in items], [15, 5])
+        self.assertEqual(sum(i.line_total for i in items), Decimal('560.00'))
+        self.assertEqual(invoice.total, Decimal('560.00'))
+
+    def test_box_and_loose_share_stock_and_are_checked_together(self):
+        invoice = self.sell((2, 'pack'), (5, 'piece'))  # 25 of 45 pieces
+        self.assertEqual(invoice.total, Decimal('710.00'))
+        with self.assertRaises(ValidationError) as ctx:
+            self.sell((2, 'pack'), (1, 'piece'))  # 21 > 20 left
+        self.assertIn('2 boxes', str(ctx.exception.detail))
+
+    def test_default_box_price_is_pieces_times_piece_price(self):
+        self.product.pack_price = None
+        self.product.save()
+        self.assertEqual(self.sell((1, 'pack')).total, Decimal('300.00'))
+
+    def test_partial_return_from_a_box_refunds_proportionally(self):
+        invoice = self.sell((1, 'pack'))
+        item = invoice.items.get()
+        ret = services.create_return(
+            user=self.user, invoice_id=invoice.pk, reason='Only needed 6',
+            lines=[ReturnLine(invoice_item_id=item.pk, quantity=4)],
+        )
+        self.assertEqual(ret.refund_amount, Decimal('112.00'))  # 4/10 of 280
+        self.early.refresh_from_db()
+        self.assertEqual(self.early.quantity, 9)

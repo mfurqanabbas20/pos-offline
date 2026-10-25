@@ -32,6 +32,8 @@ COLUMNS = [
     ('purchase_price', 'Purchase price', True, 'Cost per unit you sell'),
     ('selling_price', 'Selling price', True, 'Price per unit you sell'),
     ('reorder_level', 'Reorder level', False, 'Default 10'),
+    ('pieces_per_pack', 'Pieces per box', False, 'e.g. 10 if a box has 10 tablets. Leave blank or 1 if sold whole'),
+    ('pack_price', 'Box price', False, 'Price of a full box. Blank = pieces x selling price'),
     ('batch_no', 'Batch no', False, 'Leave blank to add/update the product only'),
     ('expiry_date', 'Expiry date', False, 'YYYY-MM-DD; required with a batch'),
     ('quantity', 'Quantity', False, 'Units received; required with a batch'),
@@ -44,6 +46,9 @@ HEADER_ALIASES = {
     'purchase price': 'purchase_price', 'purchase_price': 'purchase_price', 'cost price': 'purchase_price', 'cost': 'purchase_price',
     'selling price': 'selling_price', 'selling_price': 'selling_price', 'price': 'selling_price', 'sale price': 'selling_price',
     'reorder level': 'reorder_level', 'reorder_level': 'reorder_level',
+    'pieces per box': 'pieces_per_pack', 'pieces_per_pack': 'pieces_per_pack', 'pieces per pack': 'pieces_per_pack',
+    'pack size': 'pieces_per_pack', 'box size': 'pieces_per_pack',
+    'box price': 'pack_price', 'pack price': 'pack_price', 'pack_price': 'pack_price',
     'batch no': 'batch_no', 'batch_no': 'batch_no', 'batch': 'batch_no', 'batch number': 'batch_no',
     'expiry date': 'expiry_date', 'expiry_date': 'expiry_date', 'expiry': 'expiry_date', 'exp date': 'expiry_date',
     'quantity': 'quantity', 'qty': 'quantity',
@@ -199,6 +204,10 @@ def analyse(uploaded):
         purchase = _money(values.get('purchase_price'), 'Purchase price', errors)
         selling = _money(values.get('selling_price'), 'Selling price', errors)
         reorder = _whole(values.get('reorder_level'), 'Reorder level', errors)
+        per_pack = _whole(values.get('pieces_per_pack'), 'Pieces per box', errors)
+        if per_pack == 0:
+            errors.append('Pieces per box must be at least 1.')
+        pack_price = _money(values.get('pack_price'), 'Box price', errors)
 
         if product is None:
             result.product_action = 'create'
@@ -248,6 +257,7 @@ def analyse(uploaded):
         result.clean = {
             'sku': sku, 'name': name, 'category': category, 'purchase_price': purchase,
             'selling_price': selling, 'reorder_level': reorder, 'batch_no': batch_no,
+            'pieces_per_pack': per_pack, 'pack_price': pack_price,
             'expiry_date': expiry, 'quantity': quantity,
             'batch_cost': batch_cost if batch_cost is not None else effective_purchase,
         }
@@ -283,12 +293,16 @@ def apply(results):
                 sku=data['sku'], name=data['name'], category=category,
                 purchase_price=data['purchase_price'], selling_price=data['selling_price'],
                 reorder_level=data['reorder_level'] if data['reorder_level'] is not None else 10,
+                pieces_per_pack=data['pieces_per_pack'] or 1,
+                pack_price=data['pack_price'],
             )
         else:
             changes = {
                 'name': data['name'] or None, 'category': category,
                 'purchase_price': data['purchase_price'], 'selling_price': data['selling_price'],
                 'reorder_level': data['reorder_level'],
+                'pieces_per_pack': data['pieces_per_pack'] or None,
+                'pack_price': data['pack_price'],
             }
             for attr, value in changes.items():
                 if value is not None:
@@ -318,15 +332,15 @@ def build_template():
     ws.column_dimensions['B'].width = 34
 
     examples = [
-        ['PANADOL-500', 'Panadol 500mg Capsule', 'Analgesics', 6.00, 8.00, 20, 'PN2401', date(2027, 6, 30), 50, 6.00],
-        ['8901234567890', 'Amoxicillin 500mg Capsules (21)', 'Antibiotics', 2.60, 4.80, 15, 'AMX0925', date(2027, 3, 31), 40, None],
+        ['PANADOL-500', 'Panadol 500mg Tablet', 'Analgesics', 2.20, 2.70, 50, 10, 26.00, 'PN2401', date(2027, 6, 30), 200, None],
+        ['8901234567890', 'Hydryllin Syrup 120ml', 'Cough & Cold', 120.00, 145.00, 10, None, None, 'HY0925', date(2027, 3, 31), 24, None],
     ]
     for r, values in enumerate(examples, start=2):
         for c, value in enumerate(values, start=1):
             cell = ws.cell(row=r, column=c, value=value)
             if isinstance(value, date):
                 cell.number_format = 'yyyy-mm-dd'
-            elif c in (4, 5, 10):
+            elif c in (4, 5, 8, 12):
                 cell.number_format = '0.00'
     # Keep SKUs as text so long barcodes don't turn into 8.9E+12.
     for r in range(2, MAX_ROWS + 2):

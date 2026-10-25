@@ -45,6 +45,14 @@ class Product(models.Model):
     selling_price = models.DecimalField(**MONEY)
     reorder_level = models.PositiveIntegerField(default=10)
     is_active = models.BooleanField(default=True)
+    # Stock and prices are per piece (tablet/capsule). A box is just a bundle of pieces with its own price.
+    pieces_per_pack = models.PositiveIntegerField(
+        default=1, validators=[MinValueValidator(1)], help_text='Pieces in one box/strip. 1 = sold only as a whole unit.'
+    )
+    pack_price = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(ZERO)],
+        help_text='Price of a full box. Blank = pieces_per_pack x selling_price.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -56,6 +64,16 @@ class Product(models.Model):
 
     def __str__(self):
         return f'{self.name} ({self.sku})'
+
+    @property
+    def sells_in_packs(self):
+        return self.pieces_per_pack > 1
+
+    @property
+    def effective_pack_price(self):
+        if self.pack_price is not None:
+            return self.pack_price
+        return (self.selling_price * self.pieces_per_pack).quantize(Decimal('0.01'))
 
 
 class BatchQuerySet(models.QuerySet):

@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { toast } from "sonner"
 
 import { api } from "./api"
-import type { BatchInput, ProductInput, QueryParams, ReturnInput, SaleInput } from "./types"
+import type { BatchInput, ProductInput, QueryParams, ReceiveStockInput, ReturnInput, SaleInput } from "./types"
 
 export const queryKeys = {
   dashboard: (month: string) => ["dashboard", month] as const,
@@ -77,7 +77,7 @@ export function useSaveProduct() {
     mutationFn: ({ id, data }: { id?: number; data: ProductInput }) =>
       id ? api.products.update(id, data) : api.products.create(data),
     onSuccess: (product, { id }) => {
-      toast.success(id ? `Updated ${product.name}` : `Added ${product.name}`)
+      toast.success(id ? `Saved changes to ${product.name}` : `${product.name} saved. Now enter how many arrived.`)
       return invalidate()
     },
   })
@@ -89,7 +89,7 @@ export function useSaveBatch() {
     mutationFn: ({ id, data }: { id?: number; data: BatchInput }) =>
       id ? api.batches.update(id, data) : api.batches.create(data),
     onSuccess: (batch, { id }) => {
-      toast.success(id ? `Updated batch ${batch.batch_no}` : `Added batch ${batch.batch_no}`)
+      toast.success(id ? `Stock updated for ${batch.product_name}` : `Added ${batch.quantity} ${batch.product_name} to stock`)
       return invalidate()
     },
   })
@@ -100,10 +100,16 @@ export function useCreateCategory() {
   return useMutation({
     mutationFn: (name: string) => api.categories.create({ name }),
     onSuccess: (category) => {
-      toast.success(`Added category ${category.name}`)
+      toast.success(`New type “${category.name}” added`)
       return queryClient.invalidateQueries({ queryKey: queryKeys.categories })
     },
   })
+}
+
+/** Guided "Add stock": creates the medicine if needed and adds the delivery in one request. */
+export function useReceiveStock() {
+  const invalidate = useInvalidateStock()
+  return useMutation({ mutationFn: (data: ReceiveStockInput) => api.receiveStock(data), onSuccess: () => invalidate() })
 }
 
 /** Preview (commit=false) or import (commit=true) an inventory spreadsheet. */

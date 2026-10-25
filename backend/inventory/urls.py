@@ -8,6 +8,7 @@ from .views import (
     InventoryImportView,
     InventoryReportView,
     ProductViewSet,
+    ReceiveStockView,
 )
 
 router = DefaultRouter()
@@ -18,6 +19,7 @@ router.register('batches', BatchViewSet, basename='batch')
 urlpatterns = [
     path('inventory/', InventoryReportView.as_view(), name='inventory-report'),
     path('inventory/import/', InventoryImportView.as_view(), name='inventory-import'),
+    path('inventory/receive/', ReceiveStockView.as_view(), name='inventory-receive'),
     path('inventory/import/template/', InventoryImportTemplateView.as_view(), name='inventory-import-template'),
     *router.urls,
 ]
