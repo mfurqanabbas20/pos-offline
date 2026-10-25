@@ -169,4 +169,4 @@ SPECTACULAR_SETTINGS = {
 # Business configuration
 EXPIRY_WARNING_DAYS = int(os.environ.get('EXPIRY_WARNING_DAYS', '90'))
 # Shown on downloadable reports.
-PHARMACY_NAME = os.environ.get('PHARMACY_NAME', 'Pharmacy')
+PHARMACY_NAME = os.environ.get('PHARMACY_NAME', 'Tasnim Pharmacy')

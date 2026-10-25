@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from "next/navigation"
 import { useEffect, useRef } from "react"
 
 import { ErrorState, LoadingState } from "@/components/common"
+import { LogoMark } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { config } from "@/lib/config"
 import { formatDateTime, formatMoney } from "@/lib/format"
@@ -60,6 +61,7 @@ export function ReceiptView() {
 
       <div className="receipt mx-auto w-[80mm] rounded-sm bg-white px-[4mm] py-[5mm] font-mono text-[11px] leading-snug text-black shadow-md">
         <div className="text-center">
+          <LogoMark variant="mono" className="mx-auto mb-1.5 size-11 text-black" />
           <p className="text-[14px] font-bold uppercase">{config.pharmacy.name}</p>
           {config.pharmacy.address && <p>{config.pharmacy.address}</p>}
           {config.pharmacy.phone && <p>Tel: {config.pharmacy.phone}</p>}

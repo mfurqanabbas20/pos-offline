@@ -1,9 +1,10 @@
 "use client"
 
-import { LayoutDashboard, LogOut, Package, Pill, Receipt, ShoppingCart, Undo2 } from "lucide-react"
+import { LayoutDashboard, LogOut, Package, Receipt, ShoppingCart, Undo2 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+import { Logo, LogoMark } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
 import { config } from "@/lib/config"
@@ -23,12 +24,10 @@ export function AppSidebar() {
 
   return (
     <aside className="no-print sticky top-0 flex h-screen w-20 shrink-0 flex-col overflow-y-auto border-r bg-sidebar xl:w-60">
-      <div className="flex h-16 shrink-0 items-center justify-center gap-2.5 px-5 xl:justify-start">
-        <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Pill className="size-5" />
-        </span>
-        <span className="hidden truncate font-semibold tracking-tight xl:block">{config.pharmacy.name}</span>
-      </div>
+      <Link href="/dashboard" className="flex h-20 shrink-0 items-center justify-center px-4 xl:justify-start xl:px-5" title={config.pharmacy.name}>
+        <LogoMark className="size-11 drop-shadow-sm xl:hidden" />
+        <Logo className="hidden xl:flex" />
+      </Link>
 
       <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
         {NAV.map(({ href, label, icon: Icon }) => {

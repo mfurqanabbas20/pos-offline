@@ -16,7 +16,7 @@ from sales.models import Invoice, InvoiceItem, Return, ReturnItem
 
 from .views import build_dashboard
 
-MONEY_FMT = '#,##0.00'
+MONEY_FMT = '"Rs" #,##0.00'  # Pakistani Rupees
 DATE_FMT = 'yyyy-mm-dd'
 DATETIME_FMT = 'yyyy-mm-dd hh:mm'
 TEAL = '0F766E'

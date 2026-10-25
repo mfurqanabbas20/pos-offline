@@ -1,7 +1,6 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Pill } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
@@ -9,6 +8,7 @@ import { toast } from "sonner"
 import { z } from "zod"
 
 import { Spinner } from "@/components/common"
+import { LogoMark } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -50,12 +50,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-accent/60 to-background p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-            <Pill className="size-6" />
-          </span>
+          <LogoMark className="size-20 drop-shadow-md" />
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">{config.pharmacy.name}</h1>
-            <p className="text-sm text-muted-foreground">Sign in to the point of sale</p>
+            <h1 className="text-2xl font-semibold tracking-tight">{config.pharmacy.name}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Sign in to the point of sale</p>
           </div>
         </div>
         <Card>
