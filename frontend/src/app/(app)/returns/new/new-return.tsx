@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import { z } from "zod"
 
 import { EmptyState, ErrorState, InvoiceStatusBadge, LoadingState, PageHeader, Spinner } from "@/components/common"
+import { LoadMore } from "@/components/infinite-scroll"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +28,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate, formatDateTime, formatMoney, toNumber } from "@/lib/format"
-import { useCreateReturn, useInvoice, useInvoices } from "@/lib/queries"
+import { useCreateReturn, useInfiniteInvoices, useInvoice } from "@/lib/queries"
 import type { InvoiceDetail } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -65,7 +66,7 @@ export function NewReturnFlow() {
 function FindInvoice({ onSelect }: { onSelect: (id: number) => void }) {
   const [search, setSearch] = useState("")
   const debounced = useDebounce(search.trim())
-  const invoices = useInvoices({ search: debounced, page_size: 10 })
+  const invoices = useInfiniteInvoices({ search: debounced }, { pageSize: 15 })
 
   return (
     <Card>
@@ -82,11 +83,11 @@ function FindInvoice({ onSelect }: { onSelect: (id: number) => void }) {
           <ErrorState error={invoices.error} onRetry={() => invoices.refetch()} />
         ) : invoices.isLoading ? (
           <LoadingState rows={4} />
-        ) : invoices.data?.results.length === 0 ? (
+        ) : invoices.items.length === 0 ? (
           <EmptyState title="No sale found" description="Check the receipt number or the customer’s name and try again." />
         ) : (
           <ul className="divide-y rounded-xl border">
-            {invoices.data?.results.map((invoice) => {
+            {invoices.items.map((invoice) => {
               const disabled = invoice.status === "returned"
               return (
                 <li key={invoice.id}>
@@ -111,6 +112,16 @@ function FindInvoice({ onSelect }: { onSelect: (id: number) => void }) {
               )
             })}
           </ul>
+        )}
+        {invoices.items.length > 0 && (
+          <LoadMore
+            shown={invoices.items.length}
+            total={invoices.count}
+            hasNextPage={invoices.hasNextPage}
+            isFetchingNextPage={invoices.isFetchingNextPage}
+            fetchNextPage={invoices.fetchNextPage}
+            noun="sales"
+          />
         )}
       </CardContent>
     </Card>

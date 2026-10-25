@@ -4,6 +4,9 @@ export type Money = string
 
 export interface Paginated<T> {
   count: number
+  total_pages: number
+  page: number
+  page_size: number
   next: string | null
   previous: string | null
   results: T[]
@@ -78,11 +81,16 @@ export interface Batch {
 
 export type BatchInput = Pick<Batch, "product" | "batch_no" | "expiry_date" | "quantity" | "purchase_price">
 
+/** Stock alerts. Each list holds at most `limit` rows; the *_count fields are the full totals. */
 export interface InventoryReport {
   days: number
+  limit: number
   low_stock: Product[]
   expiring: Batch[]
   expired: Batch[]
+  low_stock_count: number
+  expiring_count: number
+  expired_count: number
 }
 
 export type PaymentMethod = "cash" | "card"

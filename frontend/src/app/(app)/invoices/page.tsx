@@ -4,7 +4,8 @@ import { Search } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
-import { EmptyState, ErrorState, InvoiceStatusBadge, LoadingState, PageHeader, Pagination } from "@/components/common"
+import { EmptyState, ErrorState, InvoiceStatusBadge, LoadingState, PageHeader } from "@/components/common"
+import { LoadMore } from "@/components/infinite-scroll"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,10 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatDateTime, formatMoney } from "@/lib/format"
-import { useInvoices } from "@/lib/queries"
+import { useInfiniteInvoices } from "@/lib/queries"
 import { cn } from "@/lib/utils"
 
-const PAGE_SIZE = 20
 const ALL = "all"
 
 export default function InvoicesPage() {
@@ -24,21 +24,14 @@ export default function InvoicesPage() {
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [status, setStatus] = useState(ALL)
-  const [page, setPage] = useState(1)
   const debounced = useDebounce(search.trim())
 
-  const invoices = useInvoices({
+  const invoices = useInfiniteInvoices({
     search: debounced,
     date_from: dateFrom,
     date_to: dateTo,
     status: status === ALL ? undefined : status,
-    page,
-    page_size: PAGE_SIZE,
   })
-  const withReset = <T,>(setter: (v: T) => void) => (v: T) => {
-    setter(v)
-    setPage(1)
-  }
   const hasFilters = search || dateFrom || dateTo || status !== ALL
 
   return (
@@ -55,20 +48,20 @@ export default function InvoicesPage() {
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
-                onChange={(e) => withReset(setSearch)(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Receipt number (e.g. INV-000123) or customer name…"
                 className="pl-9"
               />
             </div>
             <label className="flex w-full flex-col gap-1 text-xs font-medium text-muted-foreground sm:w-44">
               From date
-              <Input type="date" value={dateFrom} onChange={(e) => withReset(setDateFrom)(e.target.value)} />
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
             </label>
             <label className="flex w-full flex-col gap-1 text-xs font-medium text-muted-foreground sm:w-44">
               To date
-              <Input type="date" value={dateTo} onChange={(e) => withReset(setDateTo)(e.target.value)} />
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </label>
-            <Select value={status} onValueChange={withReset(setStatus)}>
+            <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="w-full sm:w-48" aria-label="Status">
                 <SelectValue />
               </SelectTrigger>
@@ -87,7 +80,6 @@ export default function InvoicesPage() {
                   setDateFrom("")
                   setDateTo("")
                   setStatus(ALL)
-                  setPage(1)
                 }}
               >
                 Clear
@@ -99,7 +91,7 @@ export default function InvoicesPage() {
             <ErrorState error={invoices.error} onRetry={() => invoices.refetch()} />
           ) : invoices.isLoading ? (
             <LoadingState rows={8} />
-          ) : invoices.data?.results.length === 0 ? (
+          ) : invoices.items.length === 0 ? (
             <EmptyState title={hasFilters ? "No sales match your search" : "No sales yet"} description={hasFilters ? "Try a different name or number, or clear the dates." : "Sales will appear here after you complete one on the New Sale screen."} />
           ) : (
             <div className={cn(invoices.isPlaceholderData && "opacity-60")}>
@@ -116,7 +108,7 @@ export default function InvoicesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoices.data?.results.map((invoice) => (
+                  {invoices.items.map((invoice) => (
                     <TableRow
                       key={invoice.id}
                       className="h-14 cursor-pointer"
@@ -137,7 +129,14 @@ export default function InvoicesPage() {
                   ))}
                 </TableBody>
               </Table>
-              <Pagination page={page} pageSize={PAGE_SIZE} count={invoices.data?.count ?? 0} onPageChange={setPage} />
+              <LoadMore
+              shown={invoices.items.length}
+              total={invoices.count}
+              hasNextPage={invoices.hasNextPage}
+              isFetchingNextPage={invoices.isFetchingNextPage}
+              fetchNextPage={invoices.fetchNextPage}
+              noun="sales"
+            />
             </div>
           )}
         </CardContent>

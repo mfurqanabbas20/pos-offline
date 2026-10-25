@@ -12,7 +12,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
+# POS_ENV_FILE lets the Windows launcher use .env.production without touching the developer's .env.
+load_dotenv(os.environ.get('POS_ENV_FILE') or BASE_DIR / '.env')
 
 
 def env_bool(name, default=False):
@@ -87,6 +88,13 @@ if os.environ.get('DB_ENGINE', 'postgres').lower() == 'sqlite':
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': os.environ.get('SQLITE_PATH', BASE_DIR / 'db.sqlite3'),
+            'OPTIONS': {
+                # WAL lets the dashboard read while a sale is being written; IMMEDIATE takes the write lock
+                # at the start of a transaction, so two tills saving at once queue instead of failing with
+                # "database is locked". busy_timeout waits up to 20 s for that lock.
+                'init_command': 'PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=20000;',
+                'transaction_mode': 'IMMEDIATE',
+            },
         }
     }
 else:
@@ -121,15 +129,47 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# The POS sends no email; in production use the SMTP backend so nothing is silently printed to a console.
 MAILERS = {
     'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        'BACKEND': 'django.core.mail.backends.console.EmailBackend' if DEBUG
+        else 'django.core.mail.backends.smtp.EmailBackend',
     },
+}
+
+# Local install: the app is served over plain HTTP to the same PC (http://localhost), with no TLS.
+# HTTPS-only cookies/redirects would break the admin login there, so those deployment checks are
+# acknowledged rather than "fixed". Set POS_LOCAL_HTTP=false when serving through HTTPS.
+if env_bool('POS_LOCAL_HTTP', True):
+    SILENCED_SYSTEM_CHECKS = ['security.W004', 'security.W008', 'security.W012', 'security.W016']
+else:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
+
+# Logging: warnings and errors to the console, and to LOG_DIR/backend.log when LOG_DIR is set.
+LOG_DIR = os.environ.get('LOG_DIR')
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {'plain': {'format': '{asctime} {levelname} {name}: {message}', 'style': '{'}},
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'plain'},
+        **({'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(Path(LOG_DIR) / 'backend.log'),
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'encoding': 'utf-8',
+            'formatter': 'plain',
+        }} if LOG_DIR else {}),
+    },
+    'root': {'handlers': ['console', *(['file'] if LOG_DIR else [])], 'level': 'WARNING'},
 }
 
 
 # CORS
-CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
+CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000')
 
 
 # Django REST Framework
@@ -143,7 +183,7 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
+        'core.filters.StableOrderingFilter',
     ],
     'DEFAULT_PAGINATION_CLASS': 'core.pagination.StandardPagination',
     'PAGE_SIZE': 20,

@@ -127,17 +127,28 @@ class InventoryImportTemplateView(APIView):
 
 
 class InventoryReportView(APIView):
-    """Stock alerts: low-stock products, batches expiring within N days, and expired batches with stock."""
+    """Stock alerts: low-stock products, batches expiring within N days, and expired batches with stock.
+
+    Each list is capped at ``limit`` rows (most urgent first) with its full ``*_count`` alongside; the
+    complete lists are paginated at /products/?low_stock=true and /batches/?expiry_status=expiring|expired.
+    """
 
     @extend_schema(
-        parameters=[OpenApiParameter('days', OpenApiTypes.INT, description='Expiry window in days (default 90).')],
+        parameters=[
+            OpenApiParameter('days', OpenApiTypes.INT, description='Expiry window in days (default 90).'),
+            OpenApiParameter('limit', OpenApiTypes.INT, description='Max rows per list (default 20, max 200).'),
+        ],
         responses=inline_serializer(
             'InventoryReport',
             fields={
                 'days': serializers.IntegerField(),
+                'limit': serializers.IntegerField(),
                 'low_stock': ProductSerializer(many=True),
                 'expiring': BatchSerializer(many=True),
                 'expired': BatchSerializer(many=True),
+                'low_stock_count': serializers.IntegerField(),
+                'expiring_count': serializers.IntegerField(),
+                'expired_count': serializers.IntegerField(),
             },
         ),
     )
@@ -148,16 +159,26 @@ class InventoryReportView(APIView):
                 raise ValueError
         except ValueError:
             return error_response('days must be a non-negative integer.', code='validation_error')
+        try:
+            limit = min(int(request.query_params.get('limit', 20)), 200)
+            if limit < 1:
+                raise ValueError
+        except ValueError:
+            return error_response('limit must be a whole number between 1 and 200.', code='validation_error')
 
         batches = Batch.objects.select_related('product').in_stock()
-        low_stock = Product.objects.select_related('category').low_stock().order_by('sellable_stock', 'name')
+        low_stock = Product.objects.select_related('category').low_stock().order_by('sellable_stock', 'name', 'id')
         expiring = batches.expiring_within(days).fefo()
         expired = batches.expired().fefo()
         return Response({
             'days': days,
-            'low_stock': ProductSerializer(low_stock, many=True).data,
-            'expiring': BatchSerializer(expiring, many=True).data,
-            'expired': BatchSerializer(expired, many=True).data,
+            'limit': limit,
+            'low_stock': ProductSerializer(low_stock[:limit], many=True).data,
+            'expiring': BatchSerializer(expiring[:limit], many=True).data,
+            'expired': BatchSerializer(expired[:limit], many=True).data,
+            'low_stock_count': low_stock.count(),
+            'expiring_count': expiring.count(),
+            'expired_count': expired.count(),
         })
 
 

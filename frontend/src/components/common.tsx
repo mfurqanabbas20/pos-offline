@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, ChevronLeft, ChevronRight, Inbox, Lightbulb, Loader2 } from "lucide-react"
+import { AlertCircle, Inbox, Lightbulb, Loader2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -94,41 +94,6 @@ export function EmptyState({
       <p className="text-lg font-medium">{title}</p>
       {description && <p className="max-w-md text-muted-foreground">{description}</p>}
       {action && <div className="mt-3 flex flex-wrap justify-center gap-2">{action}</div>}
-    </div>
-  )
-}
-
-export function Pagination({
-  page,
-  pageSize,
-  count,
-  onPageChange,
-}: {
-  page: number
-  pageSize: number
-  count: number
-  onPageChange: (page: number) => void
-}) {
-  const pages = Math.max(1, Math.ceil(count / pageSize))
-  if (count === 0) return null
-  const from = (page - 1) * pageSize + 1
-  const to = Math.min(page * pageSize, count)
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-4 pt-4 text-muted-foreground">
-      <span>
-        Showing {from}–{to} of {count}
-      </span>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-          <ChevronLeft /> Previous
-        </Button>
-        <span className="min-w-24 text-center">
-          Page {page} of {pages}
-        </span>
-        <Button variant="outline" disabled={page >= pages} onClick={() => onPageChange(page + 1)}>
-          Next <ChevronRight />
-        </Button>
-      </div>
     </div>
   )
 }

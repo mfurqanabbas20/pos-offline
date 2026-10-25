@@ -4,25 +4,24 @@ import { Plus, Search } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 
-import { EmptyState, ErrorState, LoadingState, PageHeader, Pagination } from "@/components/common"
+import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/common"
+import { LoadMore } from "@/components/infinite-scroll"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatDateTime, formatMoney } from "@/lib/format"
-import { useReturns } from "@/lib/queries"
+import { useInfiniteReturns } from "@/lib/queries"
 import { cn } from "@/lib/utils"
 
-const PAGE_SIZE = 20
 
 export default function ReturnsPage() {
   const [search, setSearch] = useState("")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
-  const [page, setPage] = useState(1)
   const debounced = useDebounce(search.trim())
-  const returns = useReturns({ search: debounced, date_from: dateFrom, date_to: dateTo, page, page_size: PAGE_SIZE })
+  const returns = useInfiniteReturns({ search: debounced, date_from: dateFrom, date_to: dateTo })
 
   return (
     <div className="mx-auto w-full max-w-[1800px]">
@@ -45,21 +44,18 @@ export default function ReturnsPage() {
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                  setPage(1)
-                }}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Receipt number, customer name or reason…"
                 className="pl-9"
               />
             </div>
             <label className="flex w-full flex-col gap-1 text-xs font-medium text-muted-foreground sm:w-44">
               From date
-              <Input type="date" value={dateFrom} onChange={(e) => (setDateFrom(e.target.value), setPage(1))} />
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
             </label>
             <label className="flex w-full flex-col gap-1 text-xs font-medium text-muted-foreground sm:w-44">
               To date
-              <Input type="date" value={dateTo} onChange={(e) => (setDateTo(e.target.value), setPage(1))} />
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </label>
           </div>
 
@@ -67,7 +63,7 @@ export default function ReturnsPage() {
             <ErrorState error={returns.error} onRetry={() => returns.refetch()} />
           ) : returns.isLoading ? (
             <LoadingState rows={8} />
-          ) : returns.data?.results.length === 0 ? (
+          ) : returns.items.length === 0 ? (
             <EmptyState
               title="No returns yet"
               action={
@@ -91,7 +87,7 @@ export default function ReturnsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {returns.data?.results.map((r) => (
+                  {returns.items.map((r) => (
                     <TableRow key={r.id} className="h-14">
                       <TableCell className="font-medium">{r.number}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDateTime(r.date)}</TableCell>
@@ -114,7 +110,14 @@ export default function ReturnsPage() {
                   ))}
                 </TableBody>
               </Table>
-              <Pagination page={page} pageSize={PAGE_SIZE} count={returns.data?.count ?? 0} onPageChange={setPage} />
+              <LoadMore
+              shown={returns.items.length}
+              total={returns.count}
+              hasNextPage={returns.hasNextPage}
+              isFetchingNextPage={returns.isFetchingNextPage}
+              fetchNextPage={returns.fetchNextPage}
+              noun="returns"
+            />
             </div>
           )}
         </CardContent>

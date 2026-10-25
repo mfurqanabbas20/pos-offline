@@ -175,7 +175,7 @@ export const api = {
   categories: crud<Category, { name: string }>("/categories"),
   products: crud<Product, ProductInput>("/products"),
   batches: crud<Batch, BatchInput>("/batches"),
-  inventory: (days?: number) => request<InventoryReport>("/inventory/", { params: { days } }),
+  inventory: (params?: { days?: number; limit?: number }) => request<InventoryReport>("/inventory/", { params }),
   receiveStock: (data: ReceiveStockInput) =>
     request<ReceiveStockResult>("/inventory/receive/", { method: "POST", body: data }),
   inventoryImport: {

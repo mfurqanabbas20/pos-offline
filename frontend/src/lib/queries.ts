@@ -1,10 +1,10 @@
 "use client"
 
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { api } from "./api"
-import type { BatchInput, ProductInput, QueryParams, ReceiveStockInput, ReturnInput, SaleInput } from "./types"
+import type { BatchInput, Paginated, ProductInput, QueryParams, ReceiveStockInput, ReturnInput, SaleInput } from "./types"
 
 export const queryKeys = {
   dashboard: (month: string) => ["dashboard", month] as const,
@@ -22,16 +22,63 @@ export const queryKeys = {
 export const useDashboard = (month: string) =>
   useQuery({ queryKey: queryKeys.dashboard(month), queryFn: () => api.dashboard(month), placeholderData: keepPreviousData })
 
-export const useInventoryReport = (days?: number) =>
-  useQuery({ queryKey: queryKeys.inventory(days), queryFn: () => api.inventory(days) })
+export const useInventoryReport = (limit = 20, days?: number) =>
+  useQuery({ queryKey: [...queryKeys.inventory(days), limit], queryFn: () => api.inventory({ days, limit }) })
 
+/** Every category (for pickers): follows the pages until there are no more. */
 export const useCategories = () =>
   useQuery({
     queryKey: queryKeys.categories,
-    queryFn: () => api.categories.list({ page_size: 200, ordering: "name" }),
-    select: (page) => page.results,
+    queryFn: async () => {
+      const all = []
+      for (let page = 1; ; page++) {
+        const res = await api.categories.list({ page, page_size: 200, ordering: "name" })
+        all.push(...res.results)
+        if (!res.next) return all
+      }
+    },
     staleTime: 5 * 60_000,
   })
+
+// ---------- Infinite lists ----------
+
+export const INFINITE_PAGE_SIZE = 30
+
+/**
+ * Infinite scrolling over a paginated endpoint. The key starts with the resource name ("products",
+ * "invoices"...) so the same invalidations that refresh normal lists also refresh these.
+ * Returns the loaded rows flattened, the total count and TanStack's fetchNextPage/hasNextPage.
+ */
+function useInfiniteList<T>(
+  resource: string,
+  fetchPage: (params: QueryParams) => Promise<Paginated<T>>,
+  params: QueryParams,
+  { enabled = true, pageSize = INFINITE_PAGE_SIZE }: { enabled?: boolean; pageSize?: number } = {},
+) {
+  const query = useInfiniteQuery({
+    queryKey: [resource, "infinite", params, pageSize],
+    queryFn: ({ pageParam }) => fetchPage({ ...params, page: pageParam, page_size: pageSize }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.next ? last.page + 1 : undefined),
+    placeholderData: keepPreviousData,
+    enabled,
+  })
+  const items = query.data?.pages.flatMap((p) => p.results) ?? []
+  const count = query.data?.pages[0]?.count ?? 0
+  return { ...query, items, count }
+}
+
+export type InfiniteList<T> = ReturnType<typeof useInfiniteList<T>>
+
+export const useInfiniteProducts = (params: QueryParams, options?: { enabled?: boolean; pageSize?: number }) =>
+  useInfiniteList("products", api.products.list, params, options)
+
+export const useInfiniteBatches = (params: QueryParams) => useInfiniteList("batches", api.batches.list, params)
+
+export const useInfiniteInvoices = (params: QueryParams, options?: { enabled?: boolean; pageSize?: number }) =>
+  useInfiniteList("invoices", api.invoices.list, params, options)
+
+export const useInfiniteReturns = (params: QueryParams) => useInfiniteList("returns", api.returns.list, params)
 
 export const useProducts = (params: QueryParams, enabled = true) =>
   useQuery({

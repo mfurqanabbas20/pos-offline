@@ -34,7 +34,7 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const [month, setMonth] = useState(currentMonth)
   const dashboard = useDashboard(month)
-  const inventory = useInventoryReport()
+  const inventory = useInventoryReport(6)
   const data = dashboard.data
   const isCurrentMonth = month >= currentMonth()
   const [downloading, setDownloading] = useState(false)
@@ -174,7 +174,7 @@ export default function DashboardPage() {
                 ) : (
                   <AlertList
                     empty="Good news: nothing is running low."
-                    items={(inventory.data?.low_stock ?? []).slice(0, 6).map((p) => ({
+                    items={(inventory.data?.low_stock ?? []).map((p) => ({
                       key: p.id,
                       title: p.name,
                       subtitle: `You asked to be warned at ${p.reorder_level}`,
@@ -189,6 +189,7 @@ export default function DashboardPage() {
                     }))}
                   />
                 )}
+                <SeeAll shown={inventory.data?.low_stock.length ?? 0} total={inventory.data?.low_stock_count ?? 0} />
               </CardContent>
             </Card>
             <Card>
@@ -209,11 +210,26 @@ export default function DashboardPage() {
                     }))}
                   />
                 )}
+                <SeeAll
+                  shown={Math.min(6, (inventory.data?.expired.length ?? 0) + (inventory.data?.expiring.length ?? 0))}
+                  total={(inventory.data?.expired_count ?? 0) + (inventory.data?.expiring_count ?? 0)}
+                />
               </CardContent>
             </Card>
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function SeeAll({ shown, total }: { shown: number; total: number }) {
+  if (total <= shown) return null
+  return (
+    <div className="pt-3 text-center">
+      <Button asChild variant="outline" size="sm">
+        <Link href="/inventory">See all {total} in Medicines &amp; Stock</Link>
+      </Button>
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import { EmptyState, ErrorState, Spinner } from "@/components/common"
+import { LoadMore } from "@/components/infinite-scroll"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,7 +20,7 @@ import { useSpeechRecognition } from "@/hooks/use-speech-recognition"
 import { api, ApiError } from "@/lib/api"
 import { config } from "@/lib/config"
 import { formatMoney, toDecimalString, toNumber } from "@/lib/format"
-import { useCreateSale, useProducts } from "@/lib/queries"
+import { useCreateSale, useInfiniteProducts } from "@/lib/queries"
 import type { PaymentMethod, Product, SaleUnit } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -85,7 +86,7 @@ export default function PosPage() {
   const [confirmClear, setConfirmClear] = useState(false)
 
   const debouncedQuery = useDebounce(query.trim(), 150)
-  const products = useProducts({ search: debouncedQuery, is_active: true, page_size: 50, ordering: "name" })
+  const products = useInfiniteProducts({ search: debouncedQuery, is_active: true, ordering: "name" })
   const createSale = useCreateSale()
 
   // Voice search: spoken words stream into the search box, which drives the normal product search.
@@ -146,7 +147,7 @@ export default function PosPage() {
     // Scanners type the barcode then press Enter: look for an exact SKU match first.
     try {
       const exact = await api.products.list({ barcode: query.trim(), is_active: true })
-      const match = exact.results[0] ?? (products.data?.results.length === 1 ? products.data.results[0] : undefined)
+      const match = exact.results[0] ?? (products.count === 1 ? products.items[0] : undefined)
       if (match) {
         addToCart(match, boxed(match) ? "pack" : "piece")
         setQuery("")
@@ -304,7 +305,7 @@ export default function PosPage() {
               <Skeleton key={i} className="h-14 rounded-lg" />
             ))}
           </div>
-        ) : products.data?.results.length === 0 ? (
+        ) : products.items.length === 0 ? (
           debouncedQuery ? (
             <EmptyState
               icon={Search}
@@ -337,7 +338,7 @@ export default function PosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.data?.results.map((product) => {
+                {products.items.map((product) => {
                   const looseOnBill = cart.find((l) => sameLine(l, product.id, "piece"))?.quantity ?? 0
                   const onBill = billSummary(cart, product)
                   const out = product.sellable_stock <= 0
@@ -441,6 +442,16 @@ export default function PosPage() {
               </TableBody>
             </Table>
           </div>
+        )}
+        {products.items.length > 0 && (
+          <LoadMore
+            shown={products.items.length}
+            total={products.count}
+            hasNextPage={products.hasNextPage}
+            isFetchingNextPage={products.isFetchingNextPage}
+            fetchNextPage={products.fetchNextPage}
+            noun="medicines"
+          />
         )}
       </section>
 

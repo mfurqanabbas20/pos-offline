@@ -4,7 +4,8 @@ import { FileSpreadsheet, PackagePlus, Pencil, Search } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 
-import { EmptyState, ErrorState, ExpiryBadge, LoadingState, LowStockBadge, PageHeader, Pagination } from "@/components/common"
+import { EmptyState, ErrorState, ExpiryBadge, LoadingState, LowStockBadge, PageHeader } from "@/components/common"
+import { LoadMore } from "@/components/infinite-scroll"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/hooks/use-debounce"
 import { formatDate, formatMoney } from "@/lib/format"
-import { useBatches, useCategories, useProducts } from "@/lib/queries"
+import { useCategories, useInfiniteBatches, useInfiniteProducts } from "@/lib/queries"
 import type { Batch, Product } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -22,7 +23,6 @@ import { BatchSheet } from "./batch-sheet"
 import { ImportDialog } from "./import-dialog"
 import { ProductSheet } from "./product-sheet"
 
-const PAGE_SIZE = 20
 const ALL = "all"
 
 export default function InventoryPage() {
@@ -124,30 +124,23 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
   const [expiry, setExpiry] = useState(ALL)
   const [category, setCategory] = useState(ALL)
   const [stock, setStock] = useState("in")
-  const [page, setPage] = useState(1)
   const debounced = useDebounce(search.trim())
 
-  const batches = useBatches({
+  const batches = useInfiniteBatches({
     search: debounced,
     expiry_status: expiry === ALL ? undefined : expiry,
     category: category === ALL ? undefined : category,
     in_stock: stock === "in" ? true : stock === "empty" ? false : undefined,
-    page,
-    page_size: PAGE_SIZE,
     ordering: "expiry_date",
   })
-  const resetPage = <T,>(setter: (v: T) => void) => (v: T) => {
-    setter(v)
-    setPage(1)
-  }
 
   return (
     <Card>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <SearchBox value={search} onChange={resetPage(setSearch)} placeholder="Search medicine name, code or batch…" />
-          <CategoryFilter value={category} onChange={resetPage(setCategory)} />
-          <Select value={expiry} onValueChange={resetPage(setExpiry)}>
+          <SearchBox value={search} onChange={setSearch} placeholder="Search medicine name, code or batch…" />
+          <CategoryFilter value={category} onChange={setCategory} />
+          <Select value={expiry} onValueChange={setExpiry}>
             <SelectTrigger className="w-full sm:w-44" aria-label="Expiry">
               <SelectValue />
             </SelectTrigger>
@@ -158,7 +151,7 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
               <SelectItem value="expired">Expired</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={stock} onValueChange={resetPage(setStock)}>
+          <Select value={stock} onValueChange={setStock}>
             <SelectTrigger className="w-full sm:w-40" aria-label="Stock">
               <SelectValue />
             </SelectTrigger>
@@ -174,7 +167,7 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
           <ErrorState error={batches.error} onRetry={() => batches.refetch()} />
         ) : batches.isLoading ? (
           <LoadingState rows={8} />
-        ) : batches.data?.results.length === 0 ? (
+        ) : batches.items.length === 0 ? (
           <EmptyState title="Nothing to show" description="No stock matches. Change the search or filters above, or press “Add stock” when medicines arrive." />
         ) : (
           <div className={cn(batches.isPlaceholderData && "opacity-60")}>
@@ -192,7 +185,7 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {batches.data?.results.map((b) => {
+                {batches.items.map((b) => {
                   const low = (b.product_sellable_stock ?? 0) <= b.reorder_level
                   return (
                     <TableRow key={b.id} className="h-14">
@@ -226,7 +219,14 @@ function BatchesTable({ onEdit }: { onEdit: (batch: Batch) => void }) {
                 })}
               </TableBody>
             </Table>
-            <Pagination page={page} pageSize={PAGE_SIZE} count={batches.data?.count ?? 0} onPageChange={setPage} />
+            <LoadMore
+              shown={batches.items.length}
+              total={batches.count}
+              hasNextPage={batches.hasNextPage}
+              isFetchingNextPage={batches.isFetchingNextPage}
+              fetchNextPage={batches.fetchNextPage}
+              noun="deliveries"
+            />
           </div>
         )}
       </CardContent>
@@ -238,29 +238,22 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState(ALL)
   const [status, setStatus] = useState(ALL)
-  const [page, setPage] = useState(1)
   const debounced = useDebounce(search.trim())
 
-  const products = useProducts({
+  const products = useInfiniteProducts({
     search: debounced,
     category: category === ALL ? undefined : category,
     low_stock: status === "low" ? true : undefined,
     is_active: status === "inactive" ? false : status === "active" ? true : undefined,
-    page,
-    page_size: PAGE_SIZE,
   })
-  const resetPage = <T,>(setter: (v: T) => void) => (v: T) => {
-    setter(v)
-    setPage(1)
-  }
 
   return (
     <Card>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <SearchBox value={search} onChange={resetPage(setSearch)} placeholder="Search medicine name, code or type…" />
-          <CategoryFilter value={category} onChange={resetPage(setCategory)} />
-          <Select value={status} onValueChange={resetPage(setStatus)}>
+          <SearchBox value={search} onChange={setSearch} placeholder="Search medicine name, code or type…" />
+          <CategoryFilter value={category} onChange={setCategory} />
+          <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="w-full sm:w-40" aria-label="Status">
               <SelectValue />
             </SelectTrigger>
@@ -277,7 +270,7 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
           <ErrorState error={products.error} onRetry={() => products.refetch()} />
         ) : products.isLoading ? (
           <LoadingState rows={8} />
-        ) : products.data?.results.length === 0 ? (
+        ) : products.items.length === 0 ? (
           <EmptyState title="No medicines found" description="Change the search or filters above, or press “Add stock” to add a medicine." />
         ) : (
           <div className={cn(products.isPlaceholderData && "opacity-60")}>
@@ -295,7 +288,7 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.data?.results.map((p) => (
+                {products.items.map((p) => (
                   <TableRow key={p.id} className="h-14">
                     <TableCell>
                       <p className="font-medium">{p.name}</p>
@@ -338,7 +331,14 @@ function ProductsTable({ onEdit }: { onEdit: (product: Product) => void }) {
                 ))}
               </TableBody>
             </Table>
-            <Pagination page={page} pageSize={PAGE_SIZE} count={products.data?.count ?? 0} onPageChange={setPage} />
+            <LoadMore
+              shown={products.items.length}
+              total={products.count}
+              hasNextPage={products.hasNextPage}
+              isFetchingNextPage={products.isFetchingNextPage}
+              fetchNextPage={products.fetchNextPage}
+              noun="medicines"
+            />
           </div>
         )}
       </CardContent>

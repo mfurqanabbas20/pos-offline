@@ -23,6 +23,7 @@ import { useId, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import { ErrorState, HelpTip, LoadingState, Spinner } from "@/components/common"
+import { LoadMore } from "@/components/infinite-scroll"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -33,7 +34,7 @@ import { useSpeechRecognition } from "@/hooks/use-speech-recognition"
 import { api, ApiError } from "@/lib/api"
 import { config } from "@/lib/config"
 import { formatMoney, toDecimalString, toNumber } from "@/lib/format"
-import { useCategories, useProducts, useReceiveStock } from "@/lib/queries"
+import { useCategories, useInfiniteProducts, useReceiveStock } from "@/lib/queries"
 import type { Product, ReceiveStockResult } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -457,7 +458,7 @@ function StepMedicine({
   const [query, setQuery] = useState("")
   const searchRef = useRef<HTMLInputElement>(null)
   const debounced = useDebounce(query.trim(), 200)
-  const products = useProducts({ search: debounced, page_size: 8, ordering: "name" })
+  const products = useInfiniteProducts({ search: debounced, ordering: "name" }, { pageSize: 10 })
   const categories = useCategories()
   const [typingCategory, setTypingCategory] = useState(false)
   const speech = useSpeechRecognition({
@@ -475,7 +476,7 @@ function StepMedicine({
     // A scanner types the barcode and presses Enter.
     const exact = await api.products.list({ barcode: query.trim() })
     if (exact.results[0]) onChoose(exact.results[0])
-    else if (products.data?.results.length === 1) onChoose(products.data.results[0])
+    else if (products.count === 1) onChoose(products.items[0])
     else onStartNew(looksLikeBarcode ? "" : query.trim(), looksLikeBarcode ? query.trim() : "")
   }
 
@@ -569,7 +570,7 @@ function StepMedicine({
         <LoadingState rows={4} />
       ) : (
         <ul className="divide-y rounded-xl border">
-          {products.data?.results.map((p) => (
+          {products.items.map((p) => (
             <li key={p.id}>
               <button
                 type="button"
@@ -589,12 +590,22 @@ function StepMedicine({
               </button>
             </li>
           ))}
-          {products.data?.results.length === 0 && (
+          {products.items.length === 0 && (
             <li className="px-4 py-6 text-center text-muted-foreground">
               {debounced ? `“${debounced}” is not in your list yet.` : "You have not added any medicines yet."}
             </li>
           )}
         </ul>
+      )}
+      {products.items.length > 0 && (
+        <LoadMore
+          shown={products.items.length}
+          total={products.count}
+          hasNextPage={products.hasNextPage}
+          isFetchingNextPage={products.isFetchingNextPage}
+          fetchNextPage={products.fetchNextPage}
+          noun="medicines"
+        />
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed p-4">

@@ -179,3 +179,48 @@ class ReceiveStockTests(APITestCase):
             'product': make_product().pk, 'quantity': 1, 'expiry_date': '2020-01-31'}, format='json')
         self.assertIn('already passed', past.data['error']['message'])
         self.assertFalse(Batch.objects.exists())
+
+
+class PaginationTests(APITestCase):
+    """Every list endpoint pages, and pages never overlap or skip rows (needed for infinite scroll)."""
+
+    def setUp(self):
+        self.client.force_authenticate(make_user())
+        # 25 products with the SAME price: ordering by price alone would be ambiguous.
+        self.products = [make_product(name=f'Same {i:02d}', selling_price='10.00') for i in range(25)]
+
+    def walk(self, url, **params):
+        seen, page = [], 1
+        while True:
+            data = self.client.get(url, {**params, 'page': page, 'page_size': 10}).data
+            self.assertEqual(data['page'], page)
+            seen += [row['id'] for row in data['results']]
+            if not data['next']:
+                return data, seen
+            page += 1
+
+    def test_pages_cover_every_row_exactly_once_even_with_ties(self):
+        for ordering in ['selling_price', '-selling_price', 'name', '']:
+            data, seen = self.walk('/api/products/', ordering=ordering)
+            self.assertEqual(len(seen), 25, ordering)
+            self.assertEqual(len(set(seen)), 25, ordering)
+            self.assertEqual(data['total_pages'], 3)
+
+    def test_all_list_endpoints_are_paginated(self):
+        for url in ['/api/products/', '/api/batches/', '/api/categories/', '/api/invoices/', '/api/returns/']:
+            data = self.client.get(url, {'page_size': 5}).data
+            for key in ('count', 'total_pages', 'page', 'page_size', 'next', 'previous', 'results'):
+                self.assertIn(key, data, url)
+
+    def test_page_size_is_capped(self):
+        self.assertEqual(self.client.get('/api/products/', {'page_size': 5000}).data['page_size'], 200)
+
+    def test_inventory_report_is_limited_but_counts_everything(self):
+        for p in self.products:
+            make_batch(p, 1, expires_in_days=10)
+        data = self.client.get('/api/inventory/', {'limit': 5}).data
+        self.assertEqual(len(data['expiring']), 5)
+        self.assertEqual(data['expiring_count'], 25)
+        self.assertEqual(len(data['low_stock']), 5)
+        self.assertEqual(data['low_stock_count'], 25)
+        self.assertEqual(self.client.get('/api/inventory/', {'limit': 0}).status_code, 400)
