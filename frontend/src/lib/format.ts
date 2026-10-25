@@ -66,3 +66,10 @@ export function formatMonth(month: string): string {
   const [y, m] = month.split("-").map(Number)
   return new Date(y, m - 1, 1).toLocaleDateString(config.locale, { month: "long", year: "numeric" })
 }
+
+/** "10%" from a discount amount and the subtotal it came off (2 decimals max, trailing zeros dropped). */
+export function discountPercentLabel(discount: string | number, subtotal: string | number): string {
+  const sub = toNumber(subtotal)
+  if (!sub) return ""
+  return `${Number(((toNumber(discount) / sub) * 100).toFixed(2))}%`
+}

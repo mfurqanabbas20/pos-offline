@@ -256,3 +256,26 @@ class PackSaleTests(TestCase):
         self.assertEqual(ret.refund_amount, Decimal('112.00'))  # 4/10 of 280
         self.early.refresh_from_db()
         self.assertEqual(self.early.quantity, 9)
+
+
+class PercentDiscountTests(TestCase):
+    def setUp(self):
+        self.user = make_user()
+        self.product = make_product(selling_price='51.50')
+        make_batch(self.product, 50, expires_in_days=100)
+
+    def sell(self, **kwargs):
+        return services.create_sale(
+            user=self.user, payment_method='card', lines=[SaleLine(product_id=self.product.pk, quantity=2)], **kwargs,
+        )
+
+    def test_percent_is_applied_to_server_subtotal_and_rounded(self):
+        invoice = self.sell(discount_percent=Decimal('10'))  # 10% of 103.00
+        self.assertEqual((invoice.subtotal, invoice.discount, invoice.total),
+                         (Decimal('103.00'), Decimal('10.30'), Decimal('92.70')))
+
+    def test_percent_overrides_amount_and_is_bounded(self):
+        self.assertEqual(self.sell(discount=Decimal('50'), discount_percent=Decimal('0')).discount, Decimal('0.00'))
+        self.assertEqual(self.sell(discount_percent=Decimal('100')).total, Decimal('0.00'))
+        with self.assertRaises(ValidationError):
+            self.sell(discount_percent=Decimal('120'))

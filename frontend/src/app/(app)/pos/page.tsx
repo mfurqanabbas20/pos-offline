@@ -78,6 +78,7 @@ export default function PosPage() {
   const searchRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState("")
   const [cart, setCart] = useState<CartLine[]>([])
+  // Discount is entered as a percentage of the bill (e.g. "10" = 10% off).
   const [discount, setDiscount] = useState("")
   const [payment, setPayment] = useState<PaymentMethod>("cash")
   const [received, setReceived] = useState("")
@@ -161,13 +162,15 @@ export default function PosPage() {
 
   // ---------- Totals (in cents to avoid float drift) ----------
   const subtotalC = cart.reduce((sum, l) => sum + cents(priceOf(l.product, l.unit)) * l.quantity, 0)
-  const discountC = Math.min(cents(discount), subtotalC)
+  const discountPct = Math.min(toNumber(discount), 100)
+  // Same rounding as the server (half-up to the paisa), so the screen and receipt always agree.
+  const discountC = Math.round((subtotalC * discountPct) / 100)
   const totalC = subtotalC - discountC
   const receivedC = payment === "card" ? totalC : cents(received)
   const changeC = receivedC - totalC
   const itemCount = cart.reduce((sum, l) => sum + l.quantity, 0)
 
-  const discountTooHigh = cents(discount) > subtotalC && subtotalC > 0
+  const discountTooHigh = toNumber(discount) > 100
   const insufficientCash = payment === "cash" && receivedC < totalC
   const canCheckout = cart.length > 0 && !discountTooHigh && !insufficientCash && !createSale.isPending
 
@@ -192,7 +195,8 @@ export default function PosPage() {
     createSale.mutate(
       {
         items: cart.map((l) => ({ product: l.product.id, quantity: l.quantity, unit: l.unit })),
-        discount: toDecimalString(discountC / 100),
+        discount: "0",
+        discount_percent: discountPct > 0 ? toDecimalString(discountPct) : null,
         payment_method: payment,
         amount_received: payment === "cash" ? toDecimalString(receivedC / 100) : null,
         customer_name: customer.trim(),
@@ -568,22 +572,42 @@ export default function PosPage() {
               {cart.length > 0 && (
                 <div className="grid gap-3 border-t bg-muted/30 px-5 py-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="discount">Discount (Rs off the bill)</Label>
-                    <Input
-                      id="discount"
-                      inputMode="decimal"
-                      placeholder="0"
-                      value={discount}
-                      onChange={(e) => setDiscount(e.target.value.replace(/[^\d.]/g, ""))}
-                      aria-invalid={discountTooHigh}
-                    />
+                    <Label htmlFor="discount">Discount (%)</Label>
+                    <div className="relative">
+                      <Input
+                        id="discount"
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={discount}
+                        onChange={(e) => setDiscount(e.target.value.replace(/[^\d.]/g, "").replace(/(\.\d{0,2}).*$/, "$1"))}
+                        aria-invalid={discountTooHigh}
+                        className="pr-9"
+                      />
+                      <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 font-medium text-muted-foreground">%</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {[5, 10, 15, 20].map((pct) => (
+                        <Button
+                          key={pct}
+                          type="button"
+                          size="sm"
+                          variant={discountPct === pct ? "default" : "secondary"}
+                          onClick={() => setDiscount(discountPct === pct ? "" : String(pct))}
+                        >
+                          {pct}%
+                        </Button>
+                      ))}
+                      {discountC > 0 && !discountTooHigh && (
+                        <span className="ml-1 text-sm font-medium text-primary">= {formatMoney(discountC / 100)} off</span>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="customer">Customer name</Label>
                     <Input id="customer" value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Optional" />
                   </div>
                   {discountTooHigh && (
-                    <p className="text-sm text-destructive sm:col-span-2">The discount is more than the bill. Please lower it.</p>
+                    <p className="text-sm text-destructive sm:col-span-2">A discount can’t be more than 100%. Please lower it.</p>
                   )}
                 </div>
               )}
@@ -597,7 +621,7 @@ export default function PosPage() {
                     <span className="block font-medium">Total to collect</span>
                     {discountC > 0 && (
                       <span className="block text-xs text-muted-foreground">
-                        {formatMoney(subtotalC / 100)} − {formatMoney(discountC / 100)} discount
+                        {formatMoney(subtotalC / 100)} − {discountPct}% discount ({formatMoney(discountC / 100)})
                       </span>
                     )}
                   </span>
@@ -678,7 +702,7 @@ export default function PosPage() {
                     {cart.length === 0
                       ? "Add at least one medicine to the bill."
                       : discountTooHigh
-                        ? "Lower the discount to continue."
+                        ? "Lower the discount to 100% or less to continue."
                         : "Enter the cash you received to continue."}
                   </p>
                 )}

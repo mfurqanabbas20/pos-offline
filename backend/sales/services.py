@@ -50,7 +50,8 @@ def _merge_lines(lines, key):
 
 
 @transaction.atomic
-def create_sale(*, user, lines, payment_method, amount_received=None, discount=ZERO, customer_name='', date=None):
+def create_sale(*, user, lines, payment_method, amount_received=None, discount=ZERO, discount_percent=None,
+                customer_name='', date=None):
     """Create an invoice and deduct stock using FEFO (first expiry, first out).
 
     Stock is counted in pieces. A line may sell loose pieces or whole boxes ('pack'); a box takes
@@ -137,6 +138,13 @@ def create_sale(*, user, lines, payment_method, amount_received=None, discount=Z
             allocations.append((product, batch, take, amount, unit_price, unit if per > 1 else PIECE, per))
 
     subtotal = money(sum(a[3] for a in allocations))
+    if discount_percent is not None:
+        # Percentage discounts are worked out here from the server's own subtotal, so the amount always
+        # matches the prices actually charged.
+        discount_percent = Decimal(discount_percent)
+        if not ZERO <= discount_percent <= 100:
+            raise ValidationError({'discount_percent': ['Discount must be between 0% and 100%.']})
+        discount = subtotal * discount_percent / 100
     discount = money(discount or ZERO)
     if discount < 0:
         raise ValidationError({'discount': ['Discount cannot be negative.']})

@@ -8,7 +8,7 @@ import { ErrorState, InvoiceStatusBadge, LoadingState, PageHeader } from "@/comp
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format"
+import { discountPercentLabel, formatDate, formatDateTime, formatMoney } from "@/lib/format"
 import { useInvoice } from "@/lib/queries"
 
 export function InvoiceDetailView() {
@@ -110,7 +110,7 @@ export function InvoiceDetailView() {
                 <Line label="Paid by" value={<span className="capitalize">{data.payment_method}</span>} />
                 <div className="my-3 border-t" />
                 <Line label="Subtotal" value={formatMoney(data.subtotal)} />
-                {Number(data.discount) > 0 && <Line label="Discount" value={`− ${formatMoney(data.discount)}`} />}
+                {Number(data.discount) > 0 && <Line label={`Discount (${discountPercentLabel(data.discount, data.subtotal)})`} value={`− ${formatMoney(data.discount)}`} />}
                 <Line label="Total" value={formatMoney(data.total)} strong />
                 <Line label="Customer gave" value={formatMoney(data.amount_received)} />
                 <Line label="Change given" value={formatMoney(data.change_due)} />

@@ -90,6 +90,9 @@ class SaleLineInputSerializer(serializers.Serializer):
 class SaleInputSerializer(serializers.Serializer):
     items = SaleLineInputSerializer(many=True, allow_empty=False)
     discount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0, default=0)
+    # Optional: discount as a percentage of the subtotal. When given, it replaces `discount`.
+    discount_percent = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100,
+                                                required=False, allow_null=True)
     payment_method = serializers.ChoiceField(choices=Invoice.PaymentMethod.choices)
     amount_received = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0, required=False,
                                                allow_null=True)

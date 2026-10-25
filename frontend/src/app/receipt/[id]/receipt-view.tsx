@@ -9,7 +9,7 @@ import { ErrorState, LoadingState } from "@/components/common"
 import { LogoMark } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { config } from "@/lib/config"
-import { formatDateTime, formatMoney } from "@/lib/format"
+import { discountPercentLabel, formatDateTime, formatMoney } from "@/lib/format"
 import { useInvoice } from "@/lib/queries"
 
 export function ReceiptView() {
@@ -96,7 +96,7 @@ export function ReceiptView() {
 
         <Divider />
         <Row left="Subtotal" right={formatMoney(data.subtotal)} />
-        {Number(data.discount) > 0 && <Row left="Discount" right={`-${formatMoney(data.discount)}`} />}
+        {Number(data.discount) > 0 && <Row left={`Discount (${discountPercentLabel(data.discount, data.subtotal)})`} right={`-${formatMoney(data.discount)}`} />}
         <div className="my-1 flex justify-between text-[13px] font-bold">
           <span>TOTAL</span>
           <span>{formatMoney(data.total)}</span>

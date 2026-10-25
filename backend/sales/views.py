@@ -43,6 +43,7 @@ class SaleCreateView(APIView):
             payment_method=data['payment_method'],
             amount_received=data.get('amount_received'),
             discount=data['discount'],
+            discount_percent=data.get('discount_percent'),
             customer_name=data.get('customer_name', ''),
         )
         invoice = invoice_detail_queryset().get(pk=invoice.pk)

@@ -149,6 +149,8 @@ export interface InvoiceDetail extends Invoice {
 export interface SaleInput {
   items: { product: number; quantity: number; unit: SaleUnit }[]
   discount: string
+  /** Percentage of the subtotal (0-100). When set, the server works out the discount amount. */
+  discount_percent?: string | null
   payment_method: PaymentMethod
   amount_received?: string | null
   customer_name?: string
