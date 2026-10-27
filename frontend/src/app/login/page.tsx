@@ -82,6 +82,7 @@ export default function LoginPage() {
             </form>
           </CardContent>
         </Card>
+        <p className="mt-6 text-center text-xs text-muted-foreground">Powered by {config.poweredBy}</p>
       </div>
     </div>
   )

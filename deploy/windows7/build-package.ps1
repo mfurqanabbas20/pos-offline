@@ -7,7 +7,8 @@
   files and served by the backend there. Python packages are downloaded here too, so setup on the
   pharmacy PC works without internet.
 
-  Output: dist\TasneemPOS-Win7\ and dist\TasneemPOS-Win7.zip (copy the zip to the pharmacy PC).
+  Output: dist\TasneemPOS-Win7.zip (copy the zip to the pharmacy PC). The package is assembled in
+  dist\_build, so an install someone made from an earlier dist\TasneemPOS-Win7 folder is never touched.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File deploy\windows7\build-package.ps1
@@ -21,7 +22,8 @@ $Repo = (Resolve-Path (Join-Path $Here '..\..')).Path
 $Backend = Join-Path $Repo 'backend'
 $Frontend = Join-Path $Repo 'frontend'
 $Dist = Join-Path $Repo 'dist'
-$Pkg = Join-Path $Dist 'TasneemPOS-Win7'
+$Staging = Join-Path $Dist '_build'
+$Pkg = Join-Path $Staging 'TasneemPOS-Win7'
 $DevPython = Join-Path $Backend 'venv\Scripts\python.exe'
 
 function Step([string]$m) { Write-Host "`n==> $m" -ForegroundColor Cyan }
@@ -51,7 +53,7 @@ Ok 'Screens built (frontend\out)'
 Run $DevPython @((Join-Path $Here 'fix_export.py'), (Join-Path $Frontend 'out')) $Repo
 
 Step 'Assembling the package'
-if (Test-Path $Pkg) { Remove-Item -Recurse -Force $Pkg }
+if (Test-Path $Staging) { Remove-Item -Recurse -Force $Staging }
 New-Item -ItemType Directory -Force -Path (Join-Path $Pkg 'app') | Out-Null
 
 # Backend source only: no virtualenv, databases, secrets, caches or collected static files.
@@ -78,6 +80,7 @@ Step 'Zipping'
 $zip = Join-Path $Dist 'TasneemPOS-Win7.zip'
 if (Test-Path $zip) { Remove-Item -Force $zip }
 Compress-Archive -Path $Pkg -DestinationPath $zip
+Remove-Item -Recurse -Force $Staging
 Ok "$zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB)"
 
 Write-Host "`nDone. Copy TasneemPOS-Win7.zip to the pharmacy PC and follow README.txt inside it." -ForegroundColor Green

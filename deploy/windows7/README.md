@@ -80,6 +80,7 @@ Everything that matters is OUTSIDE the app folder, so replacing the app never to
   Database ...... C:\ProgramData\TasneemPOS\data\pos.sqlite3
   Backups ....... C:\ProgramData\TasneemPOS\backups\   (newest 30 kept)
   Logs .......... C:\ProgramData\TasneemPOS\logs\
+  Settings ...... C:\ProgramData\TasneemPOS\pos.env   (written by Setup.cmd)
 
 C:\ProgramData is hidden: type it into the Windows Explorer address bar to open it.
 

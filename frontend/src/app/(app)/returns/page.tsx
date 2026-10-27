@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useDebounce } from "@/hooks/use-debounce"
-import { formatDateTime, formatMoney } from "@/lib/format"
+import { displayName, formatDateTime, formatMoney } from "@/lib/format"
 import { useInfiniteReturns } from "@/lib/queries"
 import { cn } from "@/lib/utils"
 import { invoiceHref } from "@/lib/routes"
@@ -105,7 +105,7 @@ export default function ReturnsPage() {
                         ))}
                       </TableCell>
                       <TableCell className="max-w-40 truncate text-muted-foreground" title={r.reason}>{r.reason}</TableCell>
-                      <TableCell className="hidden text-muted-foreground 2xl:table-cell">{r.created_by_name}</TableCell>
+                      <TableCell className="hidden text-muted-foreground 2xl:table-cell">{displayName(r.created_by_name)}</TableCell>
                       <TableCell className="text-right font-medium tabular-nums">{formatMoney(r.refund_amount)}</TableCell>
                     </TableRow>
                   ))}

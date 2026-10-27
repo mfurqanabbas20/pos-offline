@@ -39,11 +39,13 @@ WHEELS = APP / 'wheels'
 VENV_SCRIPTS = APP / 'venv' / 'Scripts'
 VENV_PY = VENV_SCRIPTS / 'python.exe'
 VENV_PYW = VENV_SCRIPTS / 'pythonw.exe'
-ENV_FILE = BACKEND / '.env.production'
 ICON = ROOT / 'tasneem.ico'
 
 # Pharmacy data lives outside the app folder so replacing the app never touches it.
 DATA_ROOT = Path(os.environ.get('POS_DATA_ROOT') or Path(os.environ.get('ProgramData', r'C:\ProgramData')) / 'TasneemPOS')
+# Settings (including the secret key) live with the data too, so an update keeps them.
+ENV_FILE = DATA_ROOT / 'pos.env'
+LEGACY_ENV_FILE = BACKEND / '.env.production'  # older packages kept it inside the app folder
 DATA, LOGS, BACKUPS, RUN = (DATA_ROOT / d for d in ('data', 'logs', 'backups', 'run'))
 SETTINGS = DATA_ROOT / 'settings.json'
 DB_FILE = DATA / 'pos.sqlite3'
@@ -226,10 +228,11 @@ def cmd_setup(args):
 
     step('Writing settings')
     secret = None
-    if ENV_FILE.exists():
-        for line in ENV_FILE.read_text(encoding='utf-8').splitlines():
-            if line.startswith('DJANGO_SECRET_KEY='):
-                secret = line.split('=', 1)[1]
+    for existing in (ENV_FILE, LEGACY_ENV_FILE):
+        if existing.exists() and not secret:
+            for line in existing.read_text(encoding='utf-8').splitlines():
+                if line.startswith('DJANGO_SECRET_KEY='):
+                    secret = line.split('=', 1)[1]
     ENV_FILE.write_text('\n'.join([
         '# Production settings for this PC. Written by pos.py setup - run Setup again to change.',
         'DJANGO_DEBUG=false',

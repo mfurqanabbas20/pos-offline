@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation"
 import { Logo, LogoMark } from "@/components/logo"
 import { useAuth } from "@/lib/auth"
 import { config } from "@/lib/config"
+import { displayName } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 // `short` is shown under the icon on narrower screens, `label` beside it on wide ones.
@@ -54,7 +55,7 @@ export function AppSidebar() {
       <div className="border-t p-2.5 xl:p-3">
         <div className="hidden px-2 pb-2 xl:block">
           <p className="text-xs text-muted-foreground">Signed in as</p>
-          <p className="truncate font-medium">{user?.full_name}</p>
+          <p className="truncate font-medium">{displayName(user?.full_name)}</p>
         </div>
         <button
           type="button"
@@ -64,6 +65,9 @@ export function AppSidebar() {
           <LogOut className="size-6 xl:size-5" />
           <span>Sign out</span>
         </button>
+        <p className="mt-2 px-1 text-center text-[10px] leading-tight text-muted-foreground xl:px-2 xl:text-left xl:text-xs">
+          Powered by {config.poweredBy}
+        </p>
       </div>
     </aside>
   )

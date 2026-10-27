@@ -8,7 +8,15 @@ export const config = {
     name: process.env.NEXT_PUBLIC_PHARMACY_NAME || "Tasneem Pharmacy",
     address: process.env.NEXT_PUBLIC_PHARMACY_ADDRESS ?? "",
     phone: process.env.NEXT_PUBLIC_PHARMACY_PHONE || "0333-8405395",
-    footer: process.env.NEXT_PUBLIC_RECEIPT_FOOTER ?? "Thank you for your purchase!",
+    footer: process.env.NEXT_PUBLIC_RECEIPT_FOOTER || "Thank You For Shopping With Us",
+    /** Shown instead of an "admin" login name (receipt cashier, invoices, sidebar). */
+    owner: process.env.NEXT_PUBLIC_PHARMACY_OWNER || "Tasneem",
+    terms: [
+      "No exchange or return without receipt",
+      "Medicines once sold can be exchanged as per store policy",
+      "Please check the expiry date before leaving",
+    ],
   },
+  poweredBy: "TintSol Limited",
   expiryWarningDays: 90,
 }

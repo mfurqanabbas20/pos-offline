@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { saveBlob } from "@/lib/download"
-import { currentMonth, formatDate, formatMoney, formatMonth, shiftMonth } from "@/lib/format"
+import { currentMonth, displayName, formatDate, formatMoney, formatMonth, shiftMonth } from "@/lib/format"
 import { useDashboard, useInventoryReport } from "@/lib/queries"
 import { cn } from "@/lib/utils"
 
@@ -53,7 +53,7 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1800px]">
-      <PageHeader title={`${greeting()}, ${user?.first_name || user?.full_name || "there"}`} description="What would you like to do?" />
+      <PageHeader title={`${greeting()}, ${user ? displayName(user.first_name || user.full_name) : "there"}`} description="What would you like to do?" />
 
       <div className="mb-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <QuickAction href="/pos" icon={ShoppingCart} title="New sale" hint="Sell medicines to a customer" primary />
