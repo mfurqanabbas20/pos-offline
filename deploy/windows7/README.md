@@ -46,10 +46,19 @@ The POS finds Supermium by itself and opens in its own clean window.
 
 STEP 3 - Install the POS
 ------------------------
+EITHER from GitHub (needs internet during setup):
+1. On the repo page click  Code > Download ZIP.
+2. Right-click the zip > "Extract All..." > choose  C:\  > Extract.
+3. Open  C:\pos-offline-main\deploy\windows7  and double-click  Setup.cmd
+   (it downloads the app's Python packages, which takes a few minutes).
+
+OR from TasneemPOS-Win7.zip (no internet needed):
 1. Copy TasneemPOS-Win7.zip to the PC.
 2. Right-click it > "Extract All..." > choose  C:\  > Extract.
    You now have the folder  C:\TasneemPOS-Win7
 3. Open that folder and double-click  Setup.cmd
+
+Then:
 4. When asked, choose the OWNER USERNAME and PASSWORD you will sign in with.
 5. Wait for "Setup complete." and press a key to close the window.
 

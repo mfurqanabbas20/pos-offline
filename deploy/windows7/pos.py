@@ -33,9 +33,11 @@ from pathlib import Path
 APP_NAME = 'Tasneem POS'
 ROOT = Path(__file__).resolve().parent
 APP = ROOT / 'app'
-BACKEND = APP / 'backend'
+# Two layouts work: the offline zip (everything under app\) and the GitHub download, where pos.py
+# sits in deploy\windows7 next to the committed app\frontend and the backend is two folders up.
+BACKEND = APP / 'backend' if (APP / 'backend').is_dir() else ROOT.parent.parent / 'backend'
 FRONTEND = APP / 'frontend'
-WHEELS = APP / 'wheels'
+WHEELS = APP / 'wheels'  # only in the zip; without it the packages are downloaded during setup
 VENV_SCRIPTS = APP / 'venv' / 'Scripts'
 VENV_PY = VENV_SCRIPTS / 'python.exe'
 VENV_PYW = VENV_SCRIPTS / 'pythonw.exe'
@@ -212,7 +214,10 @@ def cmd_setup(args):
         fail('Please install the 64-bit Python (the file ending in -amd64.exe).')
     ok(f'Python {sys.version.split()[0]} (64-bit)')
     if not (FRONTEND / 'index.html').exists():
-        fail(f'The app screens are missing ({FRONTEND}). Copy the complete package again.')
+        fail(f'The app screens are missing ({FRONTEND}). Download the app again '
+             '(GitHub: Code > Download ZIP) or use TasneemPOS-Win7.zip.')
+    if not (BACKEND / 'manage.py').exists():
+        fail(f'The app server files are missing ({BACKEND}). Download the app again.')
 
     for d in (DATA_ROOT, DATA, LOGS, BACKUPS, RUN):
         d.mkdir(parents=True, exist_ok=True)
@@ -224,7 +229,7 @@ def cmd_setup(args):
     source = ['--no-index', '--find-links', str(WHEELS)] if WHEELS.exists() else []
     if subprocess.run(pip + source + ['-r', str(BACKEND / 'requirements.txt')]).returncode != 0:
         fail('Installing the app packages failed. See the messages above.')
-    ok('Installed' + (' (offline, from the package)' if source else ''))
+    ok('Installed' + (' (offline, from the package)' if source else ' (downloaded from the internet)'))
 
     step('Writing settings')
     secret = None

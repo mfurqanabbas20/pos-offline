@@ -52,6 +52,13 @@ Ok 'Screens built (frontend\out)'
 # flat dotted names the browser requests (causes 404s on every page). See fix_export.py.
 Run $DevPython @((Join-Path $Here 'fix_export.py'), (Join-Path $Frontend 'out')) $Repo
 
+# Keep a copy in the repo (deploy\windows7\app\frontend) so a plain GitHub download can run
+# Setup.cmd on the Windows 7 PC too. Commit this folder after building.
+$RepoScreens = Join-Path $Here 'app\frontend'
+& robocopy.exe (Join-Path $Frontend 'out') $RepoScreens /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
+if ($LASTEXITCODE -ge 8) { throw "Copying the screens into the repo failed (robocopy $LASTEXITCODE)" }
+Ok 'Screens copied to deploy\windows7\app\frontend (commit it so the GitHub download works)'
+
 Step 'Assembling the package'
 if (Test-Path $Staging) { Remove-Item -Recurse -Force $Staging }
 New-Item -ItemType Directory -Force -Path (Join-Path $Pkg 'app') | Out-Null
